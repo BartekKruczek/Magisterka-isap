@@ -1,9 +1,12 @@
 # Pracownia-problemowa
+# Turbo ważne notatki do wirual venva
+- przy próbie instalacji AutoAWQ automatycznie instaluje się torch 2.3.1 (ale bez torchvision i torchaudio)
+- najpierw instalować torch 2.3.1, potem flash attention (wraz z packaging oraz ninja) i na koniec AutoAWQ
 
 ## To DO:
 - ~~łączyć w jedną całość wiele stron, nie tylko tekst z pierwszej z nich~~
 - ~~lepszy pre processing tekstu~~
-- zmienić ściezke pamieci .cache na SCRATCHA
+- ~~zmienić ściezke pamieci .cache na SCRATCHA~~
 - ulepszyc sposob i miejsce zapisu jsonów -> dodac date do nazwy i nowy folder
 
 ## Struktura folderów
