@@ -13,7 +13,7 @@ class Qwen2(Data):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
-        self.model_variant = "Qwen/Qwen2-VL-2B-Instruct"
+        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/tscratch/people/plgkruczek/.cache"
@@ -28,7 +28,7 @@ class Qwen2(Data):
             model = Qwen2VLForConditionalGeneration.from_pretrained(
                 self.model_variant,
                 torch_dtype = torch.float16,
-                # attn_implementation = "flash_attention_2", # nie tykać, nie działa, olać jak na razie
+                attn_implementation = "flash_attention_2",
                 device_map = 'cuda',
                 cache_dir = self.cache_dir,
             )
@@ -44,7 +44,7 @@ class Qwen2(Data):
 
             return model
 
-    def get_processor(self, memory_save = True):
+    def get_processor(self, memory_save = False):
         if (self.device.type == "mps" or self.device.type == "cpu") and memory_save:
             min_pixels = 256*28*28
             max_pixels = 1280*28*28
@@ -86,19 +86,19 @@ class Qwen2(Data):
         "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_3.png",
         "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_4.png",
         "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_5.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_6.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_7.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_8.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_9.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_10.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_11.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_12.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_13.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_14.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_15.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_16.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_17.png",
-        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_18.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_6.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_7.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_8.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_9.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_10.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_11.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_12.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_13.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_14.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_15.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_16.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_17.png",
+        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_18.png",
         "lemkin-pdf/2014/WDU20140001589/O/D20141589_png/page_0.png",
         ]
 
