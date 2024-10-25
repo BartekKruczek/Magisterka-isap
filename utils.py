@@ -14,47 +14,6 @@ class Utils(Data):
 
     def __repr__(self) -> str:
         return "Klasa do obsługi różnych narzędzi"
-    
-    # recursive
-    def longest_common_subsequence_r(self, a, b):
-        """
-        Returns the longest common subsequence of two strings
-        """
-        if len(a) == 0 or len(b) == 0:
-            return 0
-        if a[-1] == b[-1]:
-            return 1 + self.longest_common_subsequence_r(a[:-1], b[:-1])
-        else:
-            return max(self.longest_common_subsequence_r(a, b[:-1]), self.longest_common_subsequence_r(a[:-1], b))
-        
-    # dynamic
-    def longest_common_subsequence_dynamic(self, a: list, b: str) -> int:
-        all_lcs = []
-
-        b = b[:100]
-        n = len(b)
-
-        for _ in a:
-            if len(_) != 0:
-                a = a[:100]
-                m = len(a)
-                # deklaracja tablicy L[m+1][n+1] wypełnionej zerami
-                L = [[None] * (n + 1) for i in range(m + 1)]
-
-                # budowanie tablicy L[m+1][n+1] w sposób bottom-up
-                for i in range(m + 1):
-                    for j in range(n + 1):
-                        if i == 0 or j == 0:
-                            L[i][j] = 0
-                        elif a[i - 1] == b[j - 1]:
-                            L[i][j] = L[i - 1][j - 1] + 1
-                        else:
-                            L[i][j] = max(L[i - 1][j], L[i][j - 1])
-                all_lcs.append(L[m][n])
-            else:
-                continue
-
-        return max(all_lcs)
 
     def json_folder_iterator(self):
         """
@@ -66,17 +25,6 @@ class Utils(Data):
                 for file in os.listdir(os.path.join(root, dir)):
                     if file.endswith('.json'):
                         yield file
-
-    def lcs_pylcs(self, a: list, b: str) -> list[int]:
-        print(f'Initializing {self.lcs_pylcs.__name__}')
-        all_lcs: list = []
-
-        for _ in a:
-            if len(_) != 0:
-                all_lcs.append(int(pylcs.lcs_sequence_length(a, b)))
-
-        return max(all_lcs)
-
 
     def create_pdf_folder(self, dir: str) -> None:
         print(f'Initializing {self.create_pdf_folder.__name__}')
@@ -95,8 +43,11 @@ class Utils(Data):
         
         yield new_dir
 
-    def convert_pdf_to_png(self, pdf_path):
-        print(f'Initializing {self.convert_pdf_to_png.__name__}')
+    def convert_pdf_to_png(self, pdf_path, year):
+        all_pdf_files: int = self.count_all_pdf_files_per_year()
+        converted_files_counter: int = 0
+        next_progress: int = 10
+
         try:
             pdf = pdfium.PdfDocument(pdf_path)
             n_pages = len(pdf)
@@ -109,6 +60,13 @@ class Utils(Data):
                 page = pdf.get_page(page_number)
                 pil_image = page.render(scale=5, rotation=0).to_pil()
                 pil_image.save(f"{folder_path}/page_{page_number}.png")
+            converted_files_counter += 1
+            my_progress = (converted_files_counter / all_pdf_files) * 100
+
+            if my_progress >= next_progress:
+                print(f"{int(next_progress)}% of documents converted, year {year}.")
+                next_progress += 10
+            
         except pdfium.PdfiumError as e:
             print(f"Failed to load PDF document {pdf_path}: {e}")
         except Exception as e:
@@ -144,58 +102,6 @@ class Utils(Data):
                             my_list.append(os.path.join(root, dir, file))
 
         return my_list
-    
-    def find_max_lcs(self, json_iterator_paths: iter, png_list: list, my_data: classmethod, year: int) -> None:
-        print(f"Initializing {self.find_max_lcs.__name__}")
-        main_dict: dict = {}
-        # number_of_iter = int(len(png_list))
-        number_of_iter = int(5)
-
-        # Convert iterator to list to allow multiple iterations
-        json_paths_list = list(json_iterator_paths)
-
-        # Initialize the main dictionary with empty dictionaries for each png_path
-        for png_path in png_list[:number_of_iter]:
-            main_dict[png_path] = {}
-
-        # Populate the main dictionary with LCS values
-        for png_path in png_list[:number_of_iter]:
-            text = my_data.combine_text_to_one_string(my_data.clean_text(my_data.get_text_from_png(png_path)))
-            print(f"Processing PNG: {png_path}")
-            for file_path in json_paths_list:
-                # lcs_value = self.longest_common_subsequence_dynamic(file_path, text)
-                lcs_value = self.lcs_pylcs(file_path, text)
-                if lcs_value is not None:  # Ensure the LCS value is valid
-                    main_dict[png_path][file_path] = int(lcs_value)
-                    print(f"Added LCS value {lcs_value} for JSON: {file_path} with PNG: {png_path}")
-                else:
-                    print(f"No LCS value found for JSON: {file_path} with PNG: {png_path}")
-
-        # Convert the main_dict to a DataFrame and save it to an Excel file
-        rows = []
-        for png_path, lcs_dict in main_dict.items():
-            for json_path, lcs_value in lcs_dict.items():
-                rows.append([png_path, json_path, lcs_value])
-
-        df = pd.DataFrame(rows, columns=['PNG Path', 'JSON Path', 'LCS Value'])
-        df.to_excel(f'lcs_results_{year}.xlsx', index=False)
-        print("Results saved to lcs_results.xlsx")
-
-        # Iterate through the main dictionary and find the max LCS for each png_path
-        for png_path, lcs_dict in main_dict.items():
-            if lcs_dict:  # Check if the lcs_dict is not empty
-                # Find the max value in the lcs_dict for the current png_path
-                max_value = max(lcs_dict.values())
-                # Find the json_path(s) with the max value
-                for json_path, value in lcs_dict.items():
-                    if value == max_value:
-                        json_text = my_data.clean_text_from_json(my_data.get_text_from_json(my_data.read_json_data(json_path)))
-                        if len(json_text) != 0:
-                            print(f"{json_path} -> [{png_path}, {value}]")
-                            print(f"PDF text: {text[:100]}")
-                            print(f"JSON text: {json_text[:100]} \n")
-            else:
-                print(f"No LCS values found for {png_path}")
 
     def json_text_debugger(self, iterator: iter, my_data: classmethod) -> None:
         print(f"Starting debugging...")
@@ -208,44 +114,6 @@ class Utils(Data):
                 print(f"Json text first 100 characters: {json_text[:100]} \n")
 
         print(f"Debugging ended!")
-
-    def find_max_lcs2(self, json_iterator_paths, png_list, data_handler, year):
-        print(f'Initializing {self.find_max_lcs2.__name__}')
-        main_dict = {}
-
-        json_paths_list = list(json_iterator_paths)
-
-        for png_path in png_list:
-            main_dict[png_path] = {}
-
-        for png_path in png_list:
-            text = data_handler.get_text_from_png(png_path)
-            for file_path in json_paths_list:
-                json_data = data_handler.read_json_data(file_path)
-                json_text = data_handler.get_text_from_json(json_data)
-                # lcs_value = self.longest_common_subsequence_dynamic(json_text, text)
-                lcs_value = self.lcs_pylcs()
-                if lcs_value:
-                    main_dict[png_path][file_path] = lcs_value
-
-        rows = []
-        for png_path, lcs_dict in main_dict.items():
-            for json_path, lcs_value in lcs_dict.items():
-                rows.append([png_path, json_path, lcs_value])
-
-        df = pd.DataFrame(rows, columns=['PNG Path', 'JSON Path', 'LCS Value'])
-        df.to_csv(f'lcs_results_{year}.xlsx', index=False)
-
-        for png_path, lcs_dict in main_dict.items():
-            if lcs_dict:
-                max_value = max(lcs_dict.values())
-                for json_path, value in lcs_dict.items():
-                    if value == max_value:
-                        json_data = data_handler.read_json_data(json_path)
-                        json_text = data_handler.get_text_from_json(json_data)
-                        print(f"{json_path} -> [{png_path}, {value}]")
-                        print(f"PDF text: {text[:100]}")
-                        print(f"JSON text: {json_text[:100]} \n")
 
     def pngs_list_debugger(self, my_list: list[str], my_data: classmethod) -> None:
         max_lcs = {}
@@ -261,53 +129,6 @@ class Utils(Data):
             # max value
             max_value = max(max_lcs.values())
             print(f"Max lcs value {max_value}")
-
-    def find_max_lcs_folders(self, json_iterator_paths: iter, image_folders: list, my_data: classmethod, year: int) -> None:
-        print(f"Initializing {self.find_max_lcs_folders.__name__}")
-        main_dict: dict = {}
-        # number_of_iter = len(image_folders)
-        number_of_iter = 5
-
-        json_paths_list = list(json_iterator_paths)
-
-        for folder in image_folders[:number_of_iter]:
-            main_dict[folder] = {}
-
-        print(f"Main dictionary: {main_dict}")
-        for folder in image_folders[:number_of_iter]:
-            text = my_data.get_text_from_images(folder)
-            print(f"Extracted text: {text}")
-            print(f"Processing folder: {folder}")
-            for file_path in json_paths_list:
-                lcs_value = self.lcs_pylcs(file_path, text)
-                if lcs_value is not None:
-                    main_dict[folder][file_path] = int(lcs_value)
-                    print(f"Added LCS value {lcs_value} for JSON: {file_path} with folder: {folder}")
-                else:
-                    print(f"No LCS value found for JSON: {file_path} with folder: {folder}")
-
-        # Konwersja main_dict do DataFrame i zapis do pliku Excel
-        rows = []
-        for folder, lcs_dict in main_dict.items():
-            for json_path, lcs_value in lcs_dict.items():
-                rows.append([folder, json_path, lcs_value])
-
-        df = pd.DataFrame(rows, columns=['Image Folder', 'JSON Path', 'LCS Value'])
-        df.to_excel(f'lcs_results_{year}_combined.xlsx', index=False)
-        print("Results saved to lcs_results.xlsx")
-
-        # Iteracja przez main_dict i znalezienie maksymalnego LCS dla każdego folderu
-        for folder, lcs_dict in main_dict.items():
-            if lcs_dict:
-                max_value = max(lcs_dict.values())
-                for json_path, value in lcs_dict.items():
-                    if value == max_value:
-                        json_text = my_data.clean_text_from_json(my_data.get_text_from_json(my_data.read_json_data(json_path)))
-                        if len(json_text) != 0:
-                            print(f"{json_path} -> [{folder}, {value}]")
-                            print(f"JSON text: {json_text[:100]} \n")
-            else:
-                print(f"No LCS values found for {folder}")
 
     def find_matching_dates(self, excel_1: str = 'extracted_dates.xlsx', excel_2: str = 'extracted_json_dates.xlsx', output_excel: str = 'matching_dates.xlsx') -> None:
         # Wczytaj pliki Excel do DataFrame'ów

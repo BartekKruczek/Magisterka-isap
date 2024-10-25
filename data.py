@@ -17,9 +17,6 @@ class Data():
     def __repr__(self) -> str:
         return 'Data handler'
     
-    def dataframe_handler(self):
-        pass
-    
     def number_of_files(self):
         files_counter_json = 0
         files_counter_pdf = 0
@@ -39,6 +36,17 @@ class Data():
                         print(f"PDF file: {os.path.join(root, file)}")
 
         return files_counter_json, files_counter_pdf
+    
+    def count_all_pdf_files_per_year(self, year = 2015):
+        pdf_path = os.path.join(self.pdf_path, str(year))
+        file_counter = 0
+
+        for root, _, files in os.walk(pdf_path):
+            for file in files:
+                if file.endswith('.pdf'):
+                    file_counter += 1
+
+        return file_counter
     
     def read_json_data(self, file_path):
         with open(file_path, encoding='utf-8') as f:

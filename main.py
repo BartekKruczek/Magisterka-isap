@@ -21,11 +21,13 @@ def main():
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
 
+    years_to_convert: list[int] = [2015, 2016]
     # converting pdf to png
     once_converted = True
     if once_converted:
-        for pdf_path in data.yield_pdf_files(year = 2014):
-            print(utils.convert_pdf_to_png(pdf_path))
+        for i in years_to_convert:
+            for pdf_path in data.yield_pdf_files(year = i):
+                print(utils.convert_pdf_to_png(pdf_path, year = i))
 
     years = [2014]
 

@@ -1,9 +1,12 @@
 #!/bin/bash -l
 #SBATCH --job-name=pelnamoc
-#SBATCH --time=12:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=15:00:00
 #SBATCH --account=plgexaile2-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 
 module load ML-bundle/24.06a
  
