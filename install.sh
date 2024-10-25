@@ -10,6 +10,4 @@ module load ML-bundle/24.06a
 cd $SCRATCH
 
 source .venv/bin/activate
-cd /net/storage/pr3/plgrid/plgglemkin/isap/Magisterka-isap
-
-python main.py
+pip install transformers

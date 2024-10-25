@@ -9,7 +9,8 @@ __pycache__/
 .venv/
 .vscode/
 *.gz
-Output/
+Past_slurm_outputs/
+job_athena.sh
 *.xlsx
 *.png
 *.jpg
