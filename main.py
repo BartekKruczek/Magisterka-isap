@@ -5,7 +5,7 @@ import warnings
 
 from data import Data
 from utils import Utils
-# from qwen2 import Qwen2
+from qwen2 import Qwen2
 
 def main():
     warnings.filterwarnings("ignore")
@@ -16,14 +16,14 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    # qwen2 = Qwen2()
+    qwen2 = Qwen2()
 
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
 
-    years_to_convert: list[int] = [2015, 2016]
+    years_to_convert: list[int] = [2015]
     # converting pdf to png
-    once_converted = True
+    once_converted = False
     if once_converted:
         for i in years_to_convert:
             for pdf_path in data.yield_pdf_files(year = i):
@@ -185,11 +185,11 @@ def main():
     # utils.find_start_end_each_page()
 
     # DO NOT TOUCH!!!
-    # data.clean_xlsx()
-    # data.create_new_xlsx()
+    data.clean_xlsx()
+    data.create_new_xlsx()
 
     # json section
-    # qwen2.create_json()
+    qwen2.create_json()
 
     # auto repair json section
     # qwen2.auto_repair_json_QWEN()

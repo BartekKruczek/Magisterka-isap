@@ -1,59 +1,41 @@
 import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+model_name = "Qwen/Qwen2.5-1.5B-Instruct"
 
-from transformers import Qwen2VLForConditionalGeneration, AutoTokenizer, AutoProcessor
-from qwen_vl_utils import process_vision_info
-
-# We recommend enabling flash_attention_2 for better acceleration and memory saving, especially in multi-image and video scenarios.
-model = Qwen2VLForConditionalGeneration.from_pretrained(
-    "Qwen/Qwen2-VL-7B-Instruct-AWQ",
-    torch_dtype = torch.float16,
-    # attn_implementation = "flash_attention_2",
-    device_map = 'cuda',
-    cache_dir = '/net/tscratch/people/plgkruczek/.cache'
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,
 )
 
-# The default range for the number of visual tokens per image in the model is 4-16384. You can set min_pixels and max_pixels according to your needs, such as a token count range of 256-1280, to balance speed and memory usage.
-min_pixels = 256 * 28 * 28
-max_pixels = 1280 * 28 * 28
-processor = AutoProcessor.from_pretrained(
-    "Qwen/Qwen2-VL-7B-Instruct-AWQ", 
-    min_pixels = min_pixels, 
-    max_pixels = max_pixels
-)
+max_memory_mapping = {0: "30GB", 1: "30GB", 2: "30GB", 3: "30GB"}
 
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=torch.bfloat16,
+    device_map='cuda',
+    attn_implementation = "flash_attention_2",
+    cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
+    quantization_config=quantization_config,
+    max_memory=max_memory_mapping,
+)
+model.to(model.device)
+
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+prompt = "Give me a short introduction to large language model."
 messages = [
-    {
-        "role": "user",
-        "content": [
-            {
-                "type": "image",
-                "image": "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen-VL/assets/demo.jpeg",
-            },
-            {"type": "text", "text": "Describe this image."},
-        ],
-    }
+    {"role": "user", "content": prompt}
 ]
-
-# Preparation for inference
-text = processor.apply_chat_template(
-    messages, tokenize=False, add_generation_prompt=True
+text = tokenizer.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=True
 )
-image_inputs, video_inputs = process_vision_info(messages)
-inputs = processor(
-    text = [text],
-    images = image_inputs,
-    videos = video_inputs,
-    padding = True,
-    return_tensors = "pt",
+model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+generated_ids = model.generate(
+    **model_inputs,
+    max_new_tokens=512
 )
-inputs = inputs.to('cuda')
-
-# Inference: Generation of the output
-generated_ids = model.generate(**inputs, max_new_tokens=128)
-generated_ids_trimmed = [
-    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+generated_ids = [
+    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
 ]
-output_text = processor.batch_decode(
-    generated_ids_trimmed, skip_special_tokens = True, clean_up_tokenization_spaces = False
-)
-print(output_text)
+response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+print(response)

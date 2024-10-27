@@ -13,10 +13,10 @@ class Qwen2(Data):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
-        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
+        self.model_variant = "Qwen/Qwen2.5-VL-7B-Instruct"
 
         if self.device.type == "cuda":
-            self.cache_dir = "/net/tscratch/people/plgkruczek/.cache"
+            self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
