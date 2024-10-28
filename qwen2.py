@@ -13,7 +13,7 @@ class Qwen2(Data):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
-        self.model_variant = "Qwen/Qwen2.5-VL-7B-Instruct"
+        self.model_variant = "Qwen/Qwen2-7B-Instruct"
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
@@ -29,9 +29,10 @@ class Qwen2(Data):
                 self.model_variant,
                 torch_dtype = torch.float16,
                 attn_implementation = "flash_attention_2",
-                device_map = 'cuda',
+                device_map = "auto",
                 cache_dir = self.cache_dir,
             )
+            # model.to(model.device)
 
             return model
         elif self.device.type == "mps" or self.device.type == "cpu":
@@ -44,7 +45,7 @@ class Qwen2(Data):
 
             return model
 
-    def get_processor(self, memory_save = False):
+    def get_processor(self, memory_save = True):
         if (self.device.type == "mps" or self.device.type == "cpu") and memory_save:
             min_pixels = 256*28*28
             max_pixels = 1280*28*28
@@ -92,13 +93,13 @@ class Qwen2(Data):
         "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_9.png",
         "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_10.png",
         "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_11.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_12.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_13.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_14.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_15.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_16.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_17.png",
-        "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_18.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_12.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_13.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_14.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_15.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_16.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_17.png",
+        # "lemkin-pdf/2014/WDU20140001826/T/D20141826TK_png/page_18.png",
         "lemkin-pdf/2014/WDU20140001589/O/D20141589_png/page_0.png",
         ]
 

@@ -10,6 +10,7 @@ __pycache__/
 .vscode/
 *.gz
 Past_slurm_outputs/
+JSON_files/
 job_athena.sh
 *.xlsx
 *.png
