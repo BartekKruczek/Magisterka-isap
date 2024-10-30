@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import pdf2image
+import pypdfium2 as pdfium
 import pytesseract
 import re
 import pandas as pd
@@ -47,6 +48,26 @@ class Data():
                     file_counter += 1
 
         return file_counter
+    
+    def length_of_all_pdfs_per_year(self, year = None) -> dict:
+        year: int = 2014
+        storage: dict = {}
+
+        pdf_path = os.path.join(self.pdf_path, str(year))
+        for root, _, files in os.walk(pdf_path):
+            for file in files:
+                if file.endswith('.pdf'):
+                    # print(file)
+                    file_path = os.path.join(root, file)
+                    pdf = pdfium.PdfDocument(file_path)
+                    n_pages = len(pdf)
+
+                    try:
+                        storage[file_path] = n_pages
+                    except Exception as e:
+                        print(f"{e}")
+
+        return storage
     
     def read_json_data(self, file_path):
         with open(file_path, encoding='utf-8') as f:
