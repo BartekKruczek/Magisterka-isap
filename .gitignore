@@ -11,6 +11,7 @@ __pycache__/
 *.gz
 Past_slurm_outputs/
 JSON_files/
+Images/
 job_athena.sh
 *.xlsx
 *.png
