@@ -6,6 +6,7 @@ import pypdfium2 as pdfium
 import pytesseract
 import re
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from PIL import Image
 from datetime import datetime
@@ -68,7 +69,19 @@ class Data():
                         print(f"{e}")
 
         return storage
+
+    def save_histogram_of_pdfs_length(self):
+        number_of_pages: list[int] = list(self.length_of_all_pdfs_per_year().values())
+
+        if not os.path.exists(f"./Images"):
+            os.mkdir(f"./Images")
     
+        plt.figure(figsize = (10, 6))
+        plt.hist(number_of_pages)
+        plt.xticks(rotation = 90)
+        plt.grid(axis = 'y', alpha = 0.75)
+        plt.savefig("./Images/img1.png")
+
     def read_json_data(self, file_path):
         with open(file_path, encoding='utf-8') as f:
             data = json.load(f)
