@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:30:00
+#SBATCH --time=06:00:00
 #SBATCH --account=plgexaile2-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mem=470GB
@@ -20,4 +20,4 @@ cd /net/storage/pr3/plgrid/plgglemkin/isap/Magisterka-isap
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-python test.py
+python main.py

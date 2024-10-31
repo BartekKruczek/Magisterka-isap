@@ -185,11 +185,11 @@ def main():
     # utils.find_start_end_each_page()
 
     # DO NOT TOUCH!!!
-    data.clean_xlsx()
-    data.create_new_xlsx()
+    # data.clean_xlsx()
+    # data.create_new_xlsx()
 
     # json section
-    qwen2.create_json()
+    qwen2.save_json()
 
     # auto repair json section
     # qwen2.auto_repair_json_QWEN()
