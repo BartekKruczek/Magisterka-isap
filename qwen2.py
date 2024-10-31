@@ -9,12 +9,12 @@ from qwen_vl_utils import process_vision_info
 from data import Data
 from json_handler import JsonHandler
 
-class Qwen2(Data):
+class Qwen2(Data, JsonHandler):
     def __init__(self) -> None:
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
-        self.model_variant = "Qwen/Qwen2-72B-Instruct"
+        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
@@ -33,7 +33,7 @@ class Qwen2(Data):
                 device_map = "auto",
                 cache_dir = self.cache_dir,
             )
-            model.to(model.device)
+            # model.to(model.device)
 
             return model
         elif self.device.type == "mps" or self.device.type == "cpu":

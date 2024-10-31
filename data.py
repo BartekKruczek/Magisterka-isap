@@ -82,17 +82,16 @@ class Data():
         plt.grid(axis = 'y', alpha = 0.75)
         plt.savefig("./Images/img1.png")
 
-    def get_number_of_pngs(self, folder_path: str = None) -> int:
+    def get_pngs_path_from_folder(self, folder_path: str = None) -> list[str]:
         folder_path: str = "lemkin-pdf/2014/WDU20140000597/O/D20140597_png"
-        pngs_counter = 0
+        pngs_paths: list[str] = []
 
-        # counting number of .png-s files
-        for _, _, files in os.walk(folder_path):
+        for root, _, files in os.walk(folder_path):
             for file in files:
                 if file.endswith("*.png"):
-                    pngs_counter += 1
+                    pngs_paths.append(os.path.join(root, file))
 
-        return pngs_counter
+        return pngs_paths
 
     def read_json_data(self, file_path):
         with open(file_path, encoding='utf-8') as f:
