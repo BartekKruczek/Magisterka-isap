@@ -15,6 +15,8 @@ class Qwen2(Data, JsonHandler):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
         self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
+        self.model = self.get_model()
+        self.processor = self.get_processor()
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
@@ -110,13 +112,12 @@ class Qwen2(Data, JsonHandler):
         return dataset
 
     def get_input(self) -> dict:
-        processor = self.get_processor()
         dataset = self.get_dataset()
-        text = processor.apply_chat_template(
+        text = self.processor.apply_chat_template(
             dataset, tokenize=False, add_generation_prompt=True
         )
         image_inputs, video_inputs = process_vision_info(dataset)
-        inputs = processor(
+        inputs = self.processor(
             text=text,
             images=image_inputs,
             videos=video_inputs,
@@ -128,24 +129,20 @@ class Qwen2(Data, JsonHandler):
         return inputs
 
     def get_outputs(self) -> list:
-        processor = self.get_processor()
-        model = self.get_model()
         inputs = self.get_input()
 
-        generated_ids = model.generate(**inputs, max_new_tokens = 65536)
+        generated_ids = self.model.generate(**inputs, max_new_tokens = 65536)
         generated_ids_trimmed = [
             out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
-        output_text = processor.batch_decode(
+        output_text = self.processor.batch_decode(
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
         
         return output_text
 
     def save_json(self) -> None:
-        processor = self.get_processor()
         generated_jsons = self.get_outputs()
-        model = self.get_model()
 
         # in mater of fact, this is a json file and new message as well
         message = [
@@ -160,11 +157,11 @@ class Qwen2(Data, JsonHandler):
             }
         ]
 
-        text = processor.apply_chat_template(
+        text = self.processor.apply_chat_template(
             message, tokenize=False, add_generation_prompt=True
         )
         image_inputs, video_inputs = process_vision_info(message)
-        inputs = processor(
+        inputs = self.processor(
             text=text,
             images=image_inputs,
             videos=video_inputs,
@@ -173,11 +170,11 @@ class Qwen2(Data, JsonHandler):
         )
         inputs = inputs.to("cuda")
 
-        generated_ids = model.generate(**inputs, max_new_tokens = 65536)
+        generated_ids = self.model.generate(**inputs, max_new_tokens = 65536)
         generated_ids_trimmed = [
             out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
-        output_text = processor.batch_decode(
+        output_text = self.processor.batch_decode(
             generated_ids_trimmed, skip_special_tokens = True, clean_up_tokenization_spaces = False
         )
         

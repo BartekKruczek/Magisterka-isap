@@ -1,7 +1,6 @@
 import os
 import json
 import time
-import glob
 
 class JsonHandler:
     def __init__(self):
@@ -22,3 +21,10 @@ class JsonHandler:
                 json.dump(context, f, indent = 4, ensure_ascii = False)
         except Exception as e:
             print(f"Error occurred in {self.json_dump.__name__}, error: {e}")
+
+    def auto_repair_json(self) -> None:
+        # how many times should model try to repair json file on his own
+        max_number_of_iterations: int = 10
+
+        for i in range(max_number_of_iterations):
+            pass
