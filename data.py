@@ -82,16 +82,23 @@ class Data():
         plt.grid(axis = 'y', alpha = 0.75)
         plt.savefig("./Images/img1.png")
 
+    def sorting_by_page_number(self, png_path: str = None) -> int:
+        split1: str = png_path.split("/")[-1]
+        split2 = split1.split(".")[0]
+        split3 = split2.split("_")[-1]
+
+        return int(split3)
+
     def get_pngs_path_from_folder(self, folder_path: str = None) -> list[str]:
-        folder_path: str = "lemkin-pdf/2014/WDU20140000597/O/D20140597_png"
+        folder_path: str = "lemkin-pdf/2014/WDU20140000596/O/D20140596_png"
         pngs_paths: list[str] = []
 
         for root, _, files in os.walk(folder_path):
             for file in files:
-                if file.endswith("*.png"):
+                if file.endswith(".png"):
                     pngs_paths.append(os.path.join(root, file))
 
-        return pngs_paths
+        return sorted(pngs_paths, key = self.sorting_by_page_number)
 
     def read_json_data(self, file_path):
         with open(file_path, encoding='utf-8') as f:

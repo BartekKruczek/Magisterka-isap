@@ -78,332 +78,35 @@ class Qwen2(Data, JsonHandler):
             return processor
 
     def get_dataset(self) -> list[list[dict]]:
-        dataset = [
-            [
+        dataset: list[list[dict]] = []
+        pngs_paths: list[str] = self.get_pngs_path_from_folder()
+        max_batch_threshold: int = 15
+
+        for i in range(0, len(pngs_paths), max_batch_threshold):
+            current_batch = pngs_paths[i:i+max_batch_threshold]
+            current_message_content: list[dict] = []
+
+            for current_image_path in current_batch:
+                root_image_path: str = os.path.relpath(current_image_path)
+                current_message_content.append({
+                    "type": "image",
+                    "image": root_image_path
+                })
+
+            current_message_content.append({
+                "type": "text",
+                "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."
+            })
+
+            message = [
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_0.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
+                    "content": current_message_content
                 },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_1.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_2.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_3.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_4.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_5.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_6.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_7.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_8.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_9.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_10.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_11.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_12.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_13.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_14.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_15.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_16.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_17.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_18.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_19.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_20.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_21.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_22.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_23.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_24.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_25.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_26.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_27.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_28.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_29.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_30.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_31.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_32.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_33.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_34.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-            [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_35.png"},
-                        {"type": "text", "text": "Make a one, hierarchical .json from image. Combine it with other messages. Polish language only."}
-                    ],
-                },
-            ],
-        ]
+            ]
+
+            dataset.append(message)
+
         return dataset
 
     def get_input(self) -> dict:
