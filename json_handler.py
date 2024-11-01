@@ -1,6 +1,8 @@
 import os
 import json
 import time
+import glob
+
 class JsonHandler:
     def __init__(self):
         pass
@@ -27,3 +29,13 @@ class JsonHandler:
                 json.dump(json_obj, f, indent = 4, ensure_ascii = False)
         except Exception as e:
             print(f"Error occurred in {self.json_dump.__name__}, error: {e}")
+
+    def json_load(self, path: str = None) -> str:
+        colective_string: str = ""
+
+        # for now only first 2 or 3 files, change to all files later
+        for elem in glob.glob(f"{path}/*.json"):
+            with open(elem, "r") as f:
+                colective_string += f.read()
+
+        return colective_string

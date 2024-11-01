@@ -32,8 +32,8 @@ class Qwen2Half(JsonHandler):
 
         return model, tokenizer
     
-    def get_dataset(self) -> list[dict]:
-        prompt = "Can you combine three separate json files into one? All files had been created from one law document."
+    def get_dataset(self, combined_string: str = None) -> list[dict]:
+        prompt = f"Can you combine three separate json files into one? All files had been created from one law document. Text to combine: {combined_string}"
         messages = [
             {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
             {"role": "user", "content": prompt}
@@ -60,3 +60,10 @@ class Qwen2Half(JsonHandler):
         response = self.get_model_and_tokenizer()[1].batch_decode(generated_ids, skip_special_tokens=True)[0]
 
         return response
+    
+    def save_combined_json(self) -> None:
+        try:
+            json_text = self.get_response(self.get_dataset(self.json_load(path = "JSON_files")))
+            self.json_dump(json_text, idx = 0)
+        except Exception as e:
+            print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")

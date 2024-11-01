@@ -194,7 +194,8 @@ def main():
 
     # json section
     # qwen2.save_json()
-    print(qwen2half.get_response())
+    # print(qwen2half.get_response())
+    qwen2half.save_combined_json()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60
