@@ -77,8 +77,8 @@ class Data():
             os.mkdir(f"./Images")
     
         plt.figure(figsize = (10, 6))
-        plt.hist(number_of_pages)
-        plt.xticks(rotation = 90)
+        plt.hist(number_of_pages, bins = 20)
+        plt.xticks(50, rotation = 90)
         plt.grid(axis = 'y', alpha = 0.75)
         plt.savefig("./Images/img1.png")
 
