@@ -11,6 +11,7 @@
 - ~~zamiast tworzyć jeden `.json` przy użyciu `json.dump()` tworzyć wiele `.json` i zapisywać je w folderze, później łączyć przez `Qwen-2.5`~~
 - podpiąć [dSpy](https://github.com/stanfordnlp/dspy)
 - podpiąć `Qwen 2.5` do automatycznego parsowania jsonów ze sobą
+- dodać przykładowego `.json-a` do wiadomości w funkcji `dataset`
 
 ## Struktura folderów
 
