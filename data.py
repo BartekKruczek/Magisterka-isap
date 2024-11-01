@@ -78,8 +78,8 @@ class Data():
             os.mkdir(f"./Images")
     
         plt.figure(figsize = (10, 6))
-        plt.hist(number_of_pages, bins = 50)
-        plt.xticks(np.arange(0, max(number_of_pages) + 1, 25), rotation = 90)
+        plt.hist(number_of_pages, bins = 100)
+        plt.xticks(np.arange(0, max(number_of_pages) + 1, 50), rotation = 90)
         plt.xlabel('Number of pages per one document')
         plt.ylabel('Number of documents, year 2014')
         plt.savefig("./Images/img1.png")
