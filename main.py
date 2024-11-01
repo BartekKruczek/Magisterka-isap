@@ -17,7 +17,7 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    qwen2 = Qwen2()
+    # qwen2 = Qwen2()
     qwen2half = Qwen2Half()
 
     # how many files are there in both directories

@@ -41,7 +41,7 @@ class Qwen2Half(JsonHandler):
 
         return messages
     
-    def get_response(self, messages: list[dict]) -> str:
+    def get_response(self, messages: list[dict] = None) -> str:
         text = self.get_model_and_tokenizer()[1].apply_chat_template(
             messages,
             tokenize=False,
