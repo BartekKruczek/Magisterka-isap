@@ -8,7 +8,9 @@
 - ~~lepszy pre processing tekstu~~
 - ~~zmienić ściezke pamieci .cache na SCRATCHA~~
 - ~~ulepszyc sposob i miejsce zapisu jsonów -> dodac date do nazwy i nowy folder~~
-- zamiast tworzyć jeden `.json` przy użyciu `json.dump()` tworzyć wiele `.json` i zapisywać je w folderze, później łączyć przez `Qwen-2.5`
+- ~~zamiast tworzyć jeden `.json` przy użyciu `json.dump()` tworzyć wiele `.json` i zapisywać je w folderze, później łączyć przez `Qwen-2.5`~~
+- podpiąć [dSpy](https://github.com/stanfordnlp/dspy)
+- podpiąć `Qwen 2.5` do automatycznego parsowania jsonów ze sobą
 
 ## Struktura folderów
 
