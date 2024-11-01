@@ -1,4 +1,4 @@
-# Pracownia-problemowa
+# Przetwarzanie skanów ustaw prawnych do formy ustrukturyzowanej
 # Turbo ważne notatki do wirual venva
 - przy próbie instalacji AutoAWQ automatycznie instaluje się torch 2.3.1 (ale bez torchvision i torchaudio)
 - najpierw instalować torch 2.3.1, potem flash attention (wraz z packaging oraz ninja) i na koniec AutoAWQ

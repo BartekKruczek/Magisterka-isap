@@ -7,6 +7,7 @@ import pytesseract
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 from PIL import Image
 from datetime import datetime
@@ -77,9 +78,10 @@ class Data():
             os.mkdir(f"./Images")
     
         plt.figure(figsize = (10, 6))
-        plt.hist(number_of_pages, bins = 20)
-        plt.xticks(50, rotation = 90)
-        plt.grid(axis = 'y', alpha = 0.75)
+        plt.hist(number_of_pages, bins = 50)
+        plt.xticks(np.arange(0, max(number_of_pages) + 1, 25), rotation = 90)
+        plt.xlabel('Number of pages per one document')
+        plt.ylabel('Number of documents, year 2014')
         plt.savefig("./Images/img1.png")
 
     def sorting_by_page_number(self, png_path: str = None) -> int:

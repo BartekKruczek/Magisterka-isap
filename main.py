@@ -21,6 +21,8 @@ def main():
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
 
+    data.save_histogram_of_pdfs_length()
+
     years_to_convert: list[int] = [2015]
     # converting pdf to png
     once_converted = False
@@ -189,7 +191,7 @@ def main():
     # data.create_new_xlsx()
 
     # json section
-    qwen2.save_json()
+    # qwen2.save_json()
 
     # auto repair json section
     # qwen2.auto_repair_json_QWEN()

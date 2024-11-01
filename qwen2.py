@@ -83,7 +83,7 @@ class Qwen2(Data, JsonHandler):
     def get_dataset(self) -> list[list[dict]]:
         dataset: list[list[dict]] = []
         pngs_paths: list[str] = self.get_pngs_path_from_folder()
-        max_batch_threshold: int = 15
+        max_batch_threshold: int = 20
 
         for i in range(0, len(pngs_paths), max_batch_threshold):
             current_batch = pngs_paths[i:i+max_batch_threshold]
