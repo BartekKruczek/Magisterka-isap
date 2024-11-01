@@ -2,7 +2,7 @@
 #SBATCH --job-name=72B 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=64
 #SBATCH --time=06:00:00
 #SBATCH --account=plgexaile2-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200

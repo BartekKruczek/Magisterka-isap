@@ -109,76 +109,49 @@ class Qwen2(Data, JsonHandler):
 
             dataset.append(message)
 
+            # debug
+            print(f"Dataset: {dataset}")
+            print(type(dataset))
+
         return dataset
 
-    def get_input(self) -> dict:
-        dataset = self.get_dataset()
-        text = self.processor.apply_chat_template(
-            dataset, tokenize=False, add_generation_prompt=True
-        )
-        image_inputs, video_inputs = process_vision_info(dataset)
-        inputs = self.processor(
-            text=text,
-            images=image_inputs,
-            videos=video_inputs,
-            padding=True,
-            return_tensors="pt",
-        )
-        inputs = inputs.to("cuda")
+    def get_input_and_output(self, data: dict = None) -> list[str]:
+        separate_outputs: list[str] = []
 
-        return inputs
+        for elem in data:
+            text = self.processor.apply_chat_template(
+                elem, tokenize=False, add_generation_prompt=True
+            )
+            image_inputs, video_inputs = process_vision_info(elem)
+            inputs = self.processor(
+                text=text,
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
+                return_tensors="pt",
+            )
+            inputs = inputs.to("cuda")
 
-    def get_outputs(self) -> list:
-        inputs = self.get_input()
+            generated_ids = self.model.generate(**inputs, max_new_tokens = 65536)
+            generated_ids_trimmed = [
+                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+            ]
+            output_text = self.processor.batch_decode(
+                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )
+            separate_outputs.extend(output_text)
 
-        generated_ids = self.model.generate(**inputs, max_new_tokens = 65536)
-        generated_ids_trimmed = [
-            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = self.processor.batch_decode(
-            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )
-        
-        return output_text
+        # debug
+        print(f"Separate outputs: {separate_outputs}")
+        print(type(separate_outputs))
+
+        return separate_outputs
 
     def save_json(self) -> None:
-        generated_jsons = self.get_outputs()
-
-        # in mater of fact, this is a json file and new message as well
-        message = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"Here is jsons hierarchical structures {generated_jsons}. Combine them into one json file to dump it. Generated json should be sepparated by .json indicator."
-                    }
-                ]
-            }
-        ]
-
-        text = self.processor.apply_chat_template(
-            message, tokenize=False, add_generation_prompt=True
-        )
-        image_inputs, video_inputs = process_vision_info(message)
-        inputs = self.processor(
-            text=text,
-            images=image_inputs,
-            videos=video_inputs,
-            padding=True,
-            return_tensors="pt",
-        )
-        inputs = inputs.to("cuda")
-
-        generated_ids = self.model.generate(**inputs, max_new_tokens = 65536)
-        generated_ids_trimmed = [
-            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = self.processor.batch_decode(
-            generated_ids_trimmed, skip_special_tokens = True, clean_up_tokenization_spaces = False
-        )
+        generated_jsons = self.get_input_and_output(self.get_dataset())
         
-        try:
-            self.json_dump(context = output_text)
-        except Exception as e:
-            print(f"Error occurred in {self.save_json.__name__}, error: {e}")
+        for i, output_text in enumerate(generated_jsons):
+            try:
+                self.json_dump(context = output_text, idx = i)
+            except Exception as e:
+                print(f"Error occurred in {self.save_json.__name__}, error: {e}")

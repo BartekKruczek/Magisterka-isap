@@ -7,7 +7,8 @@
 - ~~łączyć w jedną całość wiele stron, nie tylko tekst z pierwszej z nich~~
 - ~~lepszy pre processing tekstu~~
 - ~~zmienić ściezke pamieci .cache na SCRATCHA~~
-- ulepszyc sposob i miejsce zapisu jsonów -> dodac date do nazwy i nowy folder
+- ~~ulepszyc sposob i miejsce zapisu jsonów -> dodac date do nazwy i nowy folder~~
+- zamiast tworzyć jeden `.json` przy użyciu `json.dump()` tworzyć wiele `.json` i zapisywać je w folderze, później łączyć przez `Qwen-2.5`
 
 ## Struktura folderów
 
