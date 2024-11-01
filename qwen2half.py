@@ -15,8 +15,7 @@ class Qwen2Half(JsonHandler):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = self.get_model()
-        self.processor = self.get_processor()
+        self.model = self.get_model_and_tokenizer()
 
     def __repr__(self) -> str:
         return "Klasa do obsługi modelu Qwen2.5"
