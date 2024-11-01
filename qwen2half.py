@@ -15,22 +15,27 @@ class Qwen2Half(JsonHandler):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = self.get_model_and_tokenizer()
+        self.model = self.get_model()
+        self.tokenizer = self.get_tokenizer()
 
     def __repr__(self) -> str:
         return "Klasa do obsługi modelu Qwen2.5"
     
-    def get_model_and_tokenizer(self):
+    def get_model(self):
         model = AutoModelForCausalLM.from_pretrained(
         self.model_variant,
-        torch_dtype="auto",
-        device_map="auto",
+        torch_dtype = torch.bfloat16,
+        device_map = "auto",
         cache_dir = self.cache_dir,
         attn_implementation = "flash_attention_2",
         )
+
+        return model
+    
+    def get_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.model_variant)
 
-        return model, tokenizer
+        return tokenizer
     
     def get_dataset(self, combined_string: str = None) -> list[dict]:
         prompt = f"Can you combine three separate json files into one? All files had been created from one law document. Text to combine: {combined_string}"
@@ -42,22 +47,22 @@ class Qwen2Half(JsonHandler):
         return messages
     
     def get_response(self, messages: list[dict] = None) -> str:
-        text = self.get_model_and_tokenizer()[1].apply_chat_template(
+        text = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True
         )
-        model_inputs = self.get_model_and_tokenizer()[1]([text], return_tensors="pt").to(self.get_model_and_tokenizer()[0].device)
+        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
 
-        generated_ids = self.get_model_and_tokenizer()[0].generate(
+        generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=65536,
+            max_new_tokens = 65536,
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
         ]
 
-        response = self.get_model_and_tokenizer()[1].batch_decode(generated_ids, skip_special_tokens=True)[0]
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
         return response
     
