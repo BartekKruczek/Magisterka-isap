@@ -4,7 +4,7 @@ import time
 import glob
 
 class JsonHandler:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def __repr__(self) -> str:
@@ -39,3 +39,13 @@ class JsonHandler:
                 colective_string += f.read()
 
         return colective_string
+    
+    def auto_repair_json(self, error_message: str = None, broken_json: str = None) -> None:
+        prompt: str = f"Json structure is not valid, because of {error_message}. Fix it {broken_json}. Polish language only."
+
+        messages: list[dict] = [
+            {"role": "system", "content": "You are a helpful assistant capable of fixing json structure."},
+            {"role": "user", "content": prompt}
+        ]
+
+        return messages

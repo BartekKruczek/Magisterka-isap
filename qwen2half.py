@@ -29,6 +29,7 @@ class Qwen2Half(JsonHandler):
         cache_dir = self.cache_dir,
         attn_implementation = "flash_attention_2",
         )
+        model.to(model.device)
 
         return model
     
@@ -56,7 +57,7 @@ class Qwen2Half(JsonHandler):
 
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens = 32768,
+            max_new_tokens = 128000,
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
@@ -67,8 +68,25 @@ class Qwen2Half(JsonHandler):
         return response
     
     def save_combined_json(self) -> None:
-        try:
-            json_text = self.get_response(self.get_dataset(self.json_load(path = "JSON_files")))
-            self.json_dump(json_text, idx = 0)
-        except Exception as e:
-            print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+        json_text = self.get_response(self.get_dataset(self.json_load(path = "JSON_files")))
+        max_iterations: int = 3
+
+        for i in range(1, max_iterations + 1):
+            try:
+                self.json_dump(json_text, idx = 999)
+                print(f"Combined json file saved successfully")
+                break
+            except Exception as e:
+                print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+
+                if i < max_iterations:
+                    # if error occurred, we take response from model and try to save json again
+                    repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text)
+                    json_text = self.get_response(repaired_attempt_message)
+
+                    try:
+                        self.json_dump(json_text, idx = 999)
+                        print(f"Combined json file saved successfully")
+                        break
+                    except Exception as e:
+                        print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
