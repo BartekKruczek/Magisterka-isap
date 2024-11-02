@@ -1,4 +1,5 @@
 import torch
+import pandas as pd
 
 from json_handler import JsonHandler
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -8,6 +9,7 @@ class Qwen2Half(JsonHandler):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.model_variant = "Qwen/Qwen2.5-72B-Instruct"
+        self.xlsx_path = "matching_dates_cleaned.xlsx"
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
@@ -38,10 +40,13 @@ class Qwen2Half(JsonHandler):
         return tokenizer
     
     def get_dataset(self, combined_string: str = None) -> list[dict]:
-        prompt = f"Can you combine three separate json files into one? All files had been created from one law document. Text to combine: {combined_string}. Leave only generated structure, polish language."
+        df = pd.read_excel(self.xlsx_path)
+        df_first_row = df.loc[0, "JSON file path"]
+
+        prompt = f"Can you combine three separate json files into one? Here is example of json structure {df_first_row}. All files had been created from one law document. Text to combine: {combined_string}. Leave only generated structure, polish language."
         messages = [
             {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ]
 
         return messages
