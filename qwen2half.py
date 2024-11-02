@@ -7,7 +7,6 @@ class Qwen2Half(JsonHandler):
     def __init__(self):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-        self.xlsx_path = "matching_dates_cleaned.xlsx"
         self.model_variant = "Qwen/Qwen2.5-72B-Instruct"
 
         if self.device.type == "cuda":
@@ -29,7 +28,7 @@ class Qwen2Half(JsonHandler):
         cache_dir = self.cache_dir,
         attn_implementation = "flash_attention_2",
         )
-        model.to(model.device)
+        # model.to(model.device)
 
         return model
     

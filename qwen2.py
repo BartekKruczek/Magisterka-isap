@@ -3,6 +3,7 @@ import json
 import glob
 import os
 import time
+import pandas as pd
 
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
@@ -62,8 +63,8 @@ class Qwen2(Data, JsonHandler):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 6500 * 28 * 28
-            max_pixels = 6500 * 28 * 28
+            min_pixels = 1280 * 28 * 28
+            max_pixels = 1280 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -83,7 +84,8 @@ class Qwen2(Data, JsonHandler):
     def get_dataset(self) -> list[list[dict]]:
         dataset: list[list[dict]] = []
         pngs_paths: list[str] = self.get_pngs_path_from_folder()
-        max_batch_threshold: int = 5
+        max_batch_threshold: int = 15
+        matched_dates: pd.ExcelFile = pd.read_excel(self.xlsx_path)
 
         for i in range(0, len(pngs_paths), max_batch_threshold):
             current_batch = pngs_paths[i:i+max_batch_threshold]
