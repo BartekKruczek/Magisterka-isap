@@ -11,22 +11,19 @@
 - ~~zamiast tworzyć jeden `.json` przy użyciu `json.dump()` tworzyć wiele `.json` i zapisywać je w folderze, później łączyć przez `Qwen-2.5`~~
 - podpiąć [dSpy](https://github.com/stanfordnlp/dspy)
 - ~~podpiąć `Qwen 2.5` do automatycznego parsowania jsonów ze sobą~~
-- dodać autonaprawianie `.json`-ów w `Qwen 2.5`
-- dodać przykładowego `.json-a` do wiadomości w funkcji `dataset`
+- ~~dodać autonaprawianie `.json`-ów w `Qwen 2.5`~~
+- ~~dodać przykładowego `.json-a` do wiadomości w funkcji `dataset`~~
+- dodać usuwanie starszych `jsonów` z batchy jak uda się je połączyć w jeden
+- wymyśleć jak zapisywać skutecznie te pliki
+- dodać iterowanie po `matching_dates_cleaned`, bo to nasz zbiór danych par plików
 
-## Struktura folderów
-
-- lemkin-pdf
-  |
-  |
-  - subfolder1
-  |
-  |
-    - subfolder2
-    |
-    |
-    - pdf
-    - _png folder
+## Ważniejsze papery:
+- [CLIP-LoRA](https://openaccess.thecvf.com/content/CVPR2024W/PV/html/Zanella_Low-Rank_Few-Shot_Adaptation_of_Vision-Language_Models_CVPRW_2024_paper.html)
+- [Prompt Learning with Optimal Transport for
+Vision-Language Models](https://openreview.net/pdf?id=b9APFSTylGT)
+- [Learning to Prompt for Vision-Language Models](https://link.springer.com/article/10.1007/s11263-022-01653-1)
+- [YaRN](https://arxiv.org/pdf/2309.00071)
+- [YaRN2](https://arxiv.org/abs/2309.00071)
 
 ## Do przeczytania i zrobienia w tym semestrze:
 - [dSpy](https://github.com/stanfordnlp/dspy)

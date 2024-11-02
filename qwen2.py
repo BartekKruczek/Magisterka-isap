@@ -37,7 +37,8 @@ class Qwen2(Data, JsonHandler):
                 device_map = "auto",
                 cache_dir = self.cache_dir,
             )
-            model.to(model.device)
+            # do not use if device_map is set to "auto"
+            # model.to(model.device)
 
             return model
         elif self.device.type == "mps" or self.device.type == "cpu":
