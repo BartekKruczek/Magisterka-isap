@@ -38,7 +38,7 @@ class Qwen2Half(JsonHandler):
         return tokenizer
     
     def get_dataset(self, combined_string: str = None) -> list[dict]:
-        prompt = f"Can you combine three separate json files into one? All files had been created from one law document. Text to combine: {combined_string}"
+        prompt = f"Can you combine three separate json files into one? All files had been created from one law document. Text to combine: {combined_string}. Leave only generated structure, polish language."
         messages = [
             {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
             {"role": "user", "content": prompt}
@@ -56,7 +56,7 @@ class Qwen2Half(JsonHandler):
 
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens = 65536,
+            max_new_tokens = 32768,
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)

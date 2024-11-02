@@ -62,8 +62,8 @@ class Qwen2(Data, JsonHandler):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 256*28*28
-            max_pixels = 1280*28*28
+            min_pixels = 6500 * 28 * 28
+            max_pixels = 6500 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -83,7 +83,7 @@ class Qwen2(Data, JsonHandler):
     def get_dataset(self) -> list[list[dict]]:
         dataset: list[list[dict]] = []
         pngs_paths: list[str] = self.get_pngs_path_from_folder()
-        max_batch_threshold: int = 20
+        max_batch_threshold: int = 5
 
         for i in range(0, len(pngs_paths), max_batch_threshold):
             current_batch = pngs_paths[i:i+max_batch_threshold]
@@ -133,7 +133,7 @@ class Qwen2(Data, JsonHandler):
             )
             inputs = inputs.to("cuda")
 
-            generated_ids = self.model.generate(**inputs, max_new_tokens = 65536)
+            generated_ids = self.model.generate(**inputs, max_new_tokens = 32768)
             generated_ids_trimmed = [
                 out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
             ]

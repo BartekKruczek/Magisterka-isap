@@ -23,7 +23,7 @@ def main():
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
 
-    data.save_histogram_of_pdfs_length()
+    # data.save_histogram_of_pdfs_length()
 
     years_to_convert: list[int] = [2015]
     # converting pdf to png
