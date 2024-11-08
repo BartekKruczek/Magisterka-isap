@@ -13,6 +13,9 @@
 - ~~podpiąć `Qwen 2.5` do automatycznego parsowania jsonów ze sobą~~
 - ~~dodać autonaprawianie `.json`-ów w `Qwen 2.5`~~
 - ~~dodać przykładowego `.json-a` do wiadomości w funkcji `dataset`~~
+- dodać metrykę levensteina na tekście
+- dodać metrykę coś tam tree na kluczach `jsonów`
+- dodać aby w prompcie nowa wiadomość zaczynała się od ostatniej strony wcześniejszej wiadomości
 - dodać usuwanie starszych `jsonów` z batchy jak uda się je połączyć w jeden
 - wymyśleć jak zapisywać skutecznie te pliki
 - dodać iterowanie po `matching_dates_cleaned`, bo to nasz zbiór danych par plików
