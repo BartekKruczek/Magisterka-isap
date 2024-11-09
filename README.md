@@ -27,6 +27,10 @@ Vision-Language Models](https://openreview.net/pdf?id=b9APFSTylGT)
 - [Learning to Prompt for Vision-Language Models](https://link.springer.com/article/10.1007/s11263-022-01653-1)
 - [YaRN](https://arxiv.org/pdf/2309.00071)
 - [YaRN2](https://arxiv.org/abs/2309.00071)
+- [ ] [A Normalized Levenshtein Distance Metric](https://ieeexplore.ieee.org/abstract/document/4160958)
+- [ ] [Levenshtein Distance Technique in Dictionary Lookup Methods: An Improved Approach](https://arxiv.org/abs/1101.1232)
+- [ ] [Research on string similarity algorithm based on Levenshtein Distance](https://ieeexplore.ieee.org/abstract/document/8054419)
+- [ ] [Przykład biblioteki peft](https://github.com/datawhalechina/self-llm/blob/master/models/Qwen2/05-Qwen2-7B-Instruct%20Lora.ipynb)
 
 ## Do przeczytania i zrobienia w tym semestrze:
 - [dSpy](https://github.com/stanfordnlp/dspy)
