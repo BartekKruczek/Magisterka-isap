@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --job-name=pelnamoc
 #SBATCH --nodes=1
-#SBATCH --time=06:00:00
+#SBATCH --time=00:30:00
 #SBATCH --account=plgexaile2-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mail-user=bkruczekk@student.agh.edu.pl

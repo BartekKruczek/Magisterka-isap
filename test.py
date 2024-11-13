@@ -1,55 +1,57 @@
-import os
-import regex as re
+import json
+import zss
 
-def sorting_by_page_number(png_path: str = None) -> int:
-    split1: str = png_path.split("/")[-1]
-    split2 = split1.split(".")[0]
-    split3 = split2.split("_")[-1]
+class JsonTree:
+    def __init__(self, data, label=''):
+        self.label = label
+        self.children = []
 
-    return int(split3)
+        if isinstance(data, dict):
+            # Dla obiektów JSON (słowników), etykietą jest klucz, a wartość to poddrzewo
+            for key, value in data.items():
+                child = JsonTree(value, label=str(key))
+                self.children.append(child)
+        elif isinstance(data, list):
+            # Dla list, etykietą może być indeks lub ogólna etykieta
+            for idx, item in enumerate(data):
+                child = JsonTree(item, label=str(idx))
+                self.children.append(child)
+        else:
+            # Dla węzłów liści (wartości), etykietą jest sama wartość
+            self.label = str(data)
 
-def get_pngs_path_from_folder(folder_path: str = None) -> list[str]:
-    folder_path: str = "lemkin-pdf/2014/WDU20140000596/O/D20140596_png"
-    pngs_paths: list[str] = []
+    def get_children(self):
+        return self.children
 
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith(".png"):
-                pngs_paths.append(os.path.join(root, file))
+    def get_label(self):
+        return self.label
 
-    return sorted(pngs_paths, key = sorting_by_page_number())
+def compute_ted(json_obj1, json_obj2):
+    """
+    Oblicza Odległość Edycyjną Drzewa między dwoma obiektami JSON.
 
-def get_dataset() -> list[list[dict]]:
-    dataset: list[list[dict]] = []
-    pngs_paths: list[str] = ["lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_0.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_1.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_2.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_3.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_4.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_5.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_6.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_7.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_8.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_9.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_10.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_11.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_12.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_13.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_14.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_15.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_16.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_17.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_18.png", "lemkin-pdf/2014/WDU20140000596/O/D20140596_png/page_19.png"]
-    # pngs_paths = get_pngs_path_from_folder()
-    max_batch_threshold: int = 15
+    :param json_obj1: Pierwszy obiekt JSON (parsowany do struktur Pythona)
+    :param json_obj2: Drugi obiekt JSON (parsowany do struktur Pythona)
+    :return: Odległość Edycyjna Drzewa (liczba całkowita)
+    """
+    tree1 = JsonTree(json_obj1)
+    tree2 = JsonTree(json_obj2)
+    distance = zss.simple_distance(
+        tree1,
+        tree2,
+        get_children=lambda node: node.get_children(),
+        get_label=lambda node: node.get_label(),
+        label_dist=lambda label1, label2: 0 if label1 == label2 else 1
+    )
+    return distance
 
-    for i in range(0, len(pngs_paths), max_batch_threshold):
-        current_batch = pngs_paths[i:i+max_batch_threshold]
-        current_message_content: list[dict] = []
+# Przykładowe użycie
+if __name__ == "__main__":
+    json_str1 = '{"name": "Jan", "age": 30, "skills": ["Python", "Machine Learning"]}'
+    json_str2 = '{"name": "Jan", "age": 31, "skills": ["Python", "Deep Learning"]}'
 
-        for current_image_path in current_batch:
-            root_image_path: str = os.path.relpath(current_image_path)
-            current_message_content.append({
-                "type": "image",
-                "image": root_image_path
-            })
+    json_obj1 = json.loads(json_str1)
+    json_obj2 = json.loads(json_str2)
 
-        current_message_content.append({
-            "type": "text",
-            "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only. Leave only json characters"
-        })
-
-        message = [
-            {
-                "role": "user",
-                "content": current_message_content
-            },
-        ]
-
-        dataset.append(message)
-
-    return dataset
-
-print(get_dataset())
+    ted_distance = compute_ted(json_obj1, json_obj2)
+    print(f"Odległość Edycyjna Drzewa: {ted_distance}")
