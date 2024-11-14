@@ -19,6 +19,8 @@
 - dodać usuwanie starszych `jsonów` z batchy jak uda się je połączyć w jeden
 - wymyśleć jak zapisywać skutecznie te pliki
 - dodać iterowanie po `matching_dates_cleaned`, bo to nasz zbiór danych par plików
+- [peft githib](https://github.com/huggingface/peft)
+- [zss - tree edit distance](https://github.com/timtadh/zhang-shasha)
 
 ## Ważniejsze papery:
 - [CLIP-LoRA](https://openaccess.thecvf.com/content/CVPR2024W/PV/html/Zanella_Low-Rank_Few-Shot_Adaptation_of_Vision-Language_Models_CVPRW_2024_paper.html)

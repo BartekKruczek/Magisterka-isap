@@ -6,7 +6,7 @@ import warnings
 from data import Data
 from utils import Utils
 from qwen2 import Qwen2
-from qwen2half import Qwen2Half
+from qwen2half import Qwen2Half 
 from metrics import CustomMetrics
 
 def main():
@@ -200,7 +200,10 @@ def main():
     # qwen2half.save_combined_json()
 
     # metrics section
-    custon_metrics.calculate_tree_edit_distance(json_generated_path="To_show_archive/2024-11-02_00-06-38_0.json", json_test_path="To_show_archive/2024-11-02_00-06-38_1.json")
+    custon_metrics.calculate_tree_edit_distance(
+        json_generated_path = "To_show_archive/2024-11-02_00-06-38_0.json", 
+        json_test_path = "To_show_archive/2024-11-02_00-06-38_1.json",
+        )
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

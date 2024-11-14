@@ -3,6 +3,8 @@ import json
 import time
 import glob
 
+from node_creator import CustomNodeCreator
+
 class JsonHandler:
     def __init__(self) -> None:
         pass
@@ -65,4 +67,24 @@ class JsonHandler:
             return json1, json2
         except Exception as e:
             print(f'Error occured {e} in function {self.json_load_TED.__name__}')
-            return 0
+            return None, None
+        
+    def create_tree_from_json_string(self, json: str = None, label: str = 'root') -> None:
+        """
+        Here is function to create custom nodes from json structure
+        """
+        my_node = CustomNodeCreator(label = label)
+
+        # dictionary case
+        if isinstance(json, dict):
+            for key, _ in json:
+                child = self.create_tree_from_json_string(json[key], label = key)
+                my_node.add_children(child)
+
+        # list as key case
+        elif isinstance(json, list):
+            for _, elem in enumerate(json):
+                child = self.create_tree_from_json_string(elem, label = 'list_item')
+                my_node.add_children(child)
+
+        return my_node
