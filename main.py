@@ -200,10 +200,11 @@ def main():
     # qwen2half.save_combined_json()
 
     # metrics section
-    custon_metrics.calculate_tree_edit_distance(
-        json_generated_path = "To_show_archive/2024-11-02_00-06-38_0.json", 
-        json_test_path = "To_show_archive/2024-11-02_00-06-38_1.json",
-        )
+    dist: int = custon_metrics.calculate_tree_edit_distance(
+                json_generated_path = "To_show_archive/2024-11-02_00-06-38_0.json", 
+                json_test_path = "To_show_archive/2024-11-02_00-06-38_1.json",
+                )
+    print(f'Calculated TED: {str(dist)}')
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

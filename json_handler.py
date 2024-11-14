@@ -77,13 +77,13 @@ class JsonHandler:
 
         # dictionary case
         if isinstance(json, dict):
-            for key, _ in json:
+            for key in json:
                 child = self.create_tree_from_json_string(json[key], label = key)
                 my_node.add_children(child)
 
         # list as key case
         elif isinstance(json, list):
-            for _, elem in enumerate(json):
+            for idx, elem in enumerate(json):
                 child = self.create_tree_from_json_string(elem, label = 'list_item')
                 my_node.add_children(child)
 
