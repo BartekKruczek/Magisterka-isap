@@ -16,4 +16,4 @@ cd /net/storage/pr3/plgrid/plgglemkin/isap/Magisterka-isap
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-python main.py
+python test.py

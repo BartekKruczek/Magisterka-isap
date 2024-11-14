@@ -47,8 +47,8 @@ def compute_ted(json_obj1, json_obj2):
 
 # Przykładowe użycie
 if __name__ == "__main__":
-    json_str1 = '{"name": "Jan", "age": 30, "skills": ["Python", "Machine Learning"]}'
-    json_str2 = '{"name": "Jan", "age": 31, "skills": ["Python", "Deep Learning"]}'
+    json_str1 = '{"id": 1, "name": "Test", "data": {"value": 10}}'
+    json_str2 = '{"id": 1, "name": "Test"}'
 
     json_obj1 = json.loads(json_str1)
     json_obj2 = json.loads(json_str2)
