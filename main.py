@@ -18,7 +18,7 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    qwen2 = Qwen2()
+    # qwen2 = Qwen2()
     # qwen2half = Qwen2Half()
     custon_metrics = CustomMetrics()
 
@@ -200,7 +200,7 @@ def main():
     # qwen2half.save_combined_json()
 
     # metrics section
-    custon_metrics.calculate_tree_edit_distance(json_generated_path="2024-10-31_19-07-57.json", json_test_path="output.json")
+    custon_metrics.calculate_tree_edit_distance(json_generated_path="To_show_archive/2024-11-02_00-06-38_0.json", json_test_path="To_show_archive/2024-11-02_00-06-38_1.json")
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

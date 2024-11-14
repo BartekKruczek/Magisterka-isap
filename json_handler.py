@@ -56,7 +56,7 @@ class JsonHandler:
                 string1: str = file1.read()
 
             with open(json_file2_path, 'r', encoding = 'utf-8') as file2:
-                string2: str = file1.read()
+                string2: str = file2.read()
 
             # make dictionary from it
             json1: dict = json.loads(string1)
@@ -64,5 +64,5 @@ class JsonHandler:
 
             return json1, json2
         except Exception as e:
-            print(f'Error occured {e} in function {self.__name__}')
+            print(f'Error occured {e} in function {self.json_load_TED.__name__}')
             return 0
