@@ -49,3 +49,20 @@ class JsonHandler:
         ]
 
         return messages
+    
+    def json_load_TED(self, json_file1_path: str = None, json_file2_path: str = None) -> str:
+        try:
+            with open(json_file1_path, 'r', encoding = 'utf-8') as file1:
+                string1: str = file1.read()
+
+            with open(json_file2_path, 'r', encoding = 'utf-8') as file2:
+                string2: str = file1.read()
+
+            # make dictionary from it
+            json1: dict = json.loads(string1)
+            json2: dict = json.loads(string2)
+
+            return json1, json2
+        except Exception as e:
+            print(f'Error occured {e} in function {self.__name__}')
+            return 0
