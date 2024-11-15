@@ -14,12 +14,12 @@
 - ~~dodać autonaprawianie `.json`-ów w `Qwen 2.5`~~
 - ~~dodać przykładowego `.json-a` do wiadomości w funkcji `dataset`~~
 - dodać metrykę levensteina na tekście
-- dodać metrykę coś tam tree na kluczach `jsonów`
+- ~~dodać metrykę TED (tree edit distance) na kluczach `jsonów`~~
 - dodać aby w prompcie nowa wiadomość zaczynała się od ostatniej strony wcześniejszej wiadomości
 - dodać usuwanie starszych `jsonów` z batchy jak uda się je połączyć w jeden
 - wymyśleć jak zapisywać skutecznie te pliki
 - dodać iterowanie po `matching_dates_cleaned`, bo to nasz zbiór danych par plików
-- [peft githib](https://github.com/huggingface/peft)
+- [peft GitHub](https://github.com/huggingface/peft)
 - [zss - tree edit distance](https://github.com/timtadh/zhang-shasha)
 
 ## Ważniejsze papery:

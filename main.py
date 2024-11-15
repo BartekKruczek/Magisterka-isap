@@ -8,6 +8,7 @@ from utils import Utils
 from qwen2 import Qwen2
 from qwen2half import Qwen2Half 
 from metrics import CustomMetrics
+from peft_lora import MyPeft
 
 def main():
     warnings.filterwarnings("ignore")
@@ -21,6 +22,7 @@ def main():
     # qwen2 = Qwen2()
     # qwen2half = Qwen2Half()
     custon_metrics = CustomMetrics()
+    mypeft = MyPeft()
 
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
@@ -205,6 +207,9 @@ def main():
                 json_test_path = "To_show_archive/2024-11-02_00-06-38_1.json",
                 )
     print(f'Calculated TED: {str(dist)}')
+
+    # peft section
+    mypeft.get_peft_model()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60
