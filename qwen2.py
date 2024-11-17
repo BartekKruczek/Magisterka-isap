@@ -29,27 +29,33 @@ class Qwen2(Data, JsonHandler):
         return "Klasa do obsługi modelu Qwen2"
 
     def get_model(self):
-        if self.device.type == "cuda":
-            model = Qwen2VLForConditionalGeneration.from_pretrained(
-                self.model_variant,
-                torch_dtype = torch.float16,
-                attn_implementation = "flash_attention_2",
-                device_map = "auto",
-                cache_dir = self.cache_dir,
-            )
-            # do not use if device_map is set to "auto"
-            # model.to(model.device)
+        global model
+        model = None
+        
+        if model is None:
+            if self.device.type == "cuda":
+                model = Qwen2VLForConditionalGeneration.from_pretrained(
+                    self.model_variant,
+                    torch_dtype = torch.bfloat16,
+                    attn_implementation = "flash_attention_2",
+                    device_map = "auto",
+                    cache_dir = self.cache_dir,
+                    load_in_4bit = True, 
+                )
 
-            return model
-        elif self.device.type == "mps" or self.device.type == "cpu":
-            model = Qwen2VLForConditionalGeneration.from_pretrained(
-                self.model_variant,
-                torch_dtype = torch.bfloat16,
-                device_map = "auto",
-                cache_dir = self.cache_dir,
-            )
+                return model
+            elif self.device.type == "mps" or self.device.type == "cpu":
+                model = Qwen2VLForConditionalGeneration.from_pretrained(
+                    self.model_variant,
+                    torch_dtype = torch.bfloat16,
+                    device_map = "auto",
+                    cache_dir = self.cache_dir,
+                )
 
-            return model
+                return model
+        else:
+            print(f"Model {self.model_variant} already loaded, skipping...")
+
 
     def get_processor(self, memory_save = True):
         if (self.device.type == "mps" or self.device.type == "cpu") and memory_save:

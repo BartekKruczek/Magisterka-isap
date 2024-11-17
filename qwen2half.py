@@ -23,16 +23,22 @@ class Qwen2Half(JsonHandler):
         return "Klasa do obsługi modelu Qwen2.5"
     
     def get_model(self):
-        model = AutoModelForCausalLM.from_pretrained(
-        self.model_variant,
-        torch_dtype = torch.bfloat16,
-        device_map = "auto",
-        cache_dir = self.cache_dir,
-        attn_implementation = "flash_attention_2",
-        )
-        # model.to(model.device)
+        global model
+        model = None
 
-        return model
+        if model is None:
+            model = AutoModelForCausalLM.from_pretrained(
+            self.model_variant,
+            torch_dtype = torch.bfloat16,
+            device_map = "auto",
+            cache_dir = self.cache_dir,
+            attn_implementation = "flash_attention_2",
+            load_in_4bit = True,
+            )
+
+            return model
+        else:
+            print(f"Model {self.model_variant} already loaded, skipping...")
     
     def get_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.model_variant)
