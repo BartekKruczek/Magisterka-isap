@@ -91,8 +91,8 @@ class Data():
 
         return int(split3)
 
-    def get_pngs_path_from_folder(self, folder_path: str = None) -> list[str]:
-        folder_path: str = "lemkin-pdf/2014/WDU20140000596/O/D20140596_png"
+    def get_pngs_path_from_folder(self, given_folder_path: str = None) -> list[str]:
+        folder_path: str = str(given_folder_path)
         pngs_paths: list[str] = []
 
         for root, _, files in os.walk(folder_path):

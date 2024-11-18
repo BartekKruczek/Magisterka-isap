@@ -99,45 +99,54 @@ class Qwen2(Data, JsonHandler):
 
     def get_dataset(self) -> list[list[dict]]:
         dataset: list[list[dict]] = []
-        pngs_paths: list[str] = self.get_pngs_path_from_folder()
         max_batch_threshold: int = 15
-        matched_dates: pd.ExcelFile = pd.read_excel(self.xlsx_path)
 
-        for i in range(0, len(pngs_paths), max_batch_threshold):
-            current_batch = pngs_paths[i:i+max_batch_threshold]
-            current_message_content: list[dict] = []
+        # convert to dataframe
+        df: pd.ExcelFile = pd.read_excel(self.xlsx_path)
+        dataframe = pd.DataFrame(df)
 
-            for current_image_path in current_batch:
-                root_image_path: str = os.path.relpath(current_image_path)
+        # iterate over .xlsx for JSON and image folder paths
+        for index, row in dataframe.iterrows():
+            images_folder_path: str = row["Image folder path"]
+            pngs_paths: list[str] = self.get_pngs_path_from_folder(given_folder_path = images_folder_path)
+            # getting subfolder name
+            subfolder_name: str = os.path.basename(images_folder_path)
+
+            for i in range(0, len(pngs_paths), max_batch_threshold):
+                current_batch = pngs_paths[i:i+max_batch_threshold]
+                current_message_content: list[dict] = []
+
+                for current_image_path in current_batch:
+                    root_image_path: str = os.path.relpath(current_image_path)
+                    current_message_content.append({
+                        "type": "image",
+                        "image": root_image_path
+                    })
+
                 current_message_content.append({
-                    "type": "image",
-                    "image": root_image_path
+                    "type": "text",
+                    "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."
                 })
 
-            current_message_content.append({
-                "type": "text",
-                "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."
-            })
+                message = [
+                    {
+                        "role": "user",
+                        "content": current_message_content
+                    },
+                ]
 
-            message = [
-                {
-                    "role": "user",
-                    "content": current_message_content
-                },
-            ]
+                dataset.append((message, subfolder_name))
 
-            dataset.append(message)
-
-            # debug
-            print(f"Dataset: {dataset}")
-            print(type(dataset))
+                # debug
+                print(f"Dataset: {dataset}")
+                print(type(dataset))
 
         return dataset
 
-    def get_input_and_output(self, data: dict = None) -> list[str]:
-        separate_outputs: list[str] = []
+    def get_input_and_output(self, data: list[tuple[list[dict], str]]) -> list[tuple[str, str]]:
+        separate_outputs: list[tuple[str, str]] = []
 
-        for elem in data:
+        for elem, subfolder_name in data:
             text = self.processor.apply_chat_template(
                 elem, tokenize=False, add_generation_prompt=True
             )
@@ -158,7 +167,8 @@ class Qwen2(Data, JsonHandler):
             output_text = self.processor.batch_decode(
                 generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )
-            separate_outputs.extend(output_text)
+            for output in output_text:
+                separate_outputs.append((output, subfolder_name))
 
         # debug
         print(f"Separate outputs: {separate_outputs}")
@@ -169,8 +179,8 @@ class Qwen2(Data, JsonHandler):
     def save_json(self) -> None:
         generated_jsons = self.get_input_and_output(self.get_dataset())
         
-        for i, output_text in enumerate(generated_jsons):
+        for i, (output_text, subfolder_name) in enumerate(generated_jsons):
             try:
-                self.json_dump(context = output_text, idx = i)
+                self.json_dump(context=output_text, idx=i, subfolder=subfolder_name)
             except Exception as e:
                 print(f"Error occurred in {self.save_json.__name__}, error: {e}")
