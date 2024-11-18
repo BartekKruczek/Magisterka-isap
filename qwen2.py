@@ -5,7 +5,7 @@ import os
 import time
 import pandas as pd
 
-from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
 from qwen_vl_utils import process_vision_info
 from data import Data
 from json_handler import JsonHandler
@@ -28,6 +28,15 @@ class Qwen2(Data, JsonHandler):
     def __repr__(self) -> str:
         return "Klasa do obsługi modelu Qwen2"
 
+    def get_custom_config(self) -> None:
+        # custom quantization method
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit = True,
+            llm_int8_enable_fp32_cpu_offload = True
+        )
+
+        return quantization_config
+
     def get_model(self):
         global model
         model = None
@@ -40,9 +49,9 @@ class Qwen2(Data, JsonHandler):
                     attn_implementation = "flash_attention_2",
                     device_map = "auto",
                     cache_dir = self.cache_dir,
-                    load_in_4bit = True, 
+                    quantization_config = self.get_custom_config(), 
                 )
-
+                print(f"Loaded model {model}")
                 return model
             elif self.device.type == "mps" or self.device.type == "cpu":
                 model = Qwen2VLForConditionalGeneration.from_pretrained(

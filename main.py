@@ -19,8 +19,8 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    # qwen2 = Qwen2()
-    # qwen2half = Qwen2Half()
+    qwen2 = Qwen2()
+    qwen2half = Qwen2Half()
     custon_metrics = CustomMetrics()
     mypeft = MyPeft()
 
@@ -197,9 +197,8 @@ def main():
     # data.create_new_xlsx()
 
     # json section
-    # qwen2.save_json()
-    # print(qwen2half.get_response())
-    # qwen2half.save_combined_json()
+    qwen2.save_json()
+    qwen2half.save_combined_json()
 
     # metrics section
     # dist: int = custon_metrics.calculate_tree_edit_distance(
@@ -209,7 +208,7 @@ def main():
     # print(f'Calculated TED: {str(dist)}')
 
     # peft section
-    mypeft.get_peft_model()
+    # mypeft.get_peft_model()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

@@ -2,7 +2,7 @@ import torch
 import pandas as pd
 
 from json_handler import JsonHandler
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 class Qwen2Half(JsonHandler):
     def __init__(self):
@@ -22,6 +22,15 @@ class Qwen2Half(JsonHandler):
     def __repr__(self) -> str:
         return "Klasa do obsługi modelu Qwen2.5"
     
+    def get_custom_config(self) -> None:
+        # custom quantization method
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit = True,
+            llm_int8_enable_fp32_cpu_offload = True
+        )
+
+        return quantization_config
+    
     def get_model(self):
         global model
         model = None
@@ -33,9 +42,9 @@ class Qwen2Half(JsonHandler):
             device_map = "auto",
             cache_dir = self.cache_dir,
             attn_implementation = "flash_attention_2",
-            load_in_4bit = True,
+            quantization_config = self.get_custom_config(),
             )
-
+            print(f"Loaded model {model}")
             return model
         else:
             print(f"Model {self.model_variant} already loaded, skipping...")
@@ -67,7 +76,7 @@ class Qwen2Half(JsonHandler):
 
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens = 128000,
+            max_new_tokens = 4096,
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
