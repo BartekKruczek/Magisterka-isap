@@ -9,6 +9,7 @@ from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAnd
 from qwen_vl_utils import process_vision_info
 from data import Data
 from json_handler import JsonHandler
+from tqdm import tqdm
 
 class Qwen2(Data, JsonHandler):
     def __init__(self) -> None:
@@ -38,33 +39,31 @@ class Qwen2(Data, JsonHandler):
         return quantization_config
 
     def get_model(self):
-        global model
-        model = None
-        
-        if model is None:
-            if self.device.type == "cuda":
-                model = Qwen2VLForConditionalGeneration.from_pretrained(
-                    self.model_variant,
-                    torch_dtype = torch.bfloat16,
-                    attn_implementation = "flash_attention_2",
-                    device_map = "auto",
-                    cache_dir = self.cache_dir,
-                    quantization_config = self.get_custom_config(), 
-                )
-                print(f"Loaded model {model}")
-                return model
-            elif self.device.type == "mps" or self.device.type == "cpu":
-                model = Qwen2VLForConditionalGeneration.from_pretrained(
-                    self.model_variant,
-                    torch_dtype = torch.bfloat16,
-                    device_map = "auto",
-                    cache_dir = self.cache_dir,
-                )
-
-                return model
-        else:
+        # check if model already loaded version 2.0
+        if hasattr(self, "model") and self.model is not None:
             print(f"Model {self.model_variant} already loaded, skipping...")
+            return self.model
+        
+        if self.device.type == "cuda":
+            model = Qwen2VLForConditionalGeneration.from_pretrained(
+                self.model_variant,
+                torch_dtype = torch.bfloat16,
+                attn_implementation = "flash_attention_2",
+                device_map = "auto",
+                cache_dir = self.cache_dir,
+                quantization_config = self.get_custom_config(), 
+            )
+            print(f"Loaded model {self.model_variant}")
+            return model
+        elif self.device.type == "mps" or self.device.type == "cpu":
+            model = Qwen2VLForConditionalGeneration.from_pretrained(
+                self.model_variant,
+                torch_dtype = torch.bfloat16,
+                device_map = "auto",
+                cache_dir = self.cache_dir,
+            )
 
+            return model
 
     def get_processor(self, memory_save = True):
         if (self.device.type == "mps" or self.device.type == "cpu") and memory_save:
@@ -79,8 +78,8 @@ class Qwen2(Data, JsonHandler):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 1280 * 28 * 28
-            max_pixels = 1280 * 28 * 28
+            min_pixels = 4 * 28 * 28
+            max_pixels = 4 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -106,7 +105,7 @@ class Qwen2(Data, JsonHandler):
         dataframe = pd.DataFrame(df)
 
         # iterate over .xlsx for JSON and image folder paths
-        for index, row in dataframe.iterrows():
+        for index, row in tqdm(dataframe.iterrows(), total = df.shape[0], desc = "Generowanie datasetu"):
             images_folder_path: str = row["Image folder path"]
             pngs_paths: list[str] = self.get_pngs_path_from_folder(given_folder_path = images_folder_path)
             # getting subfolder name
@@ -138,15 +137,15 @@ class Qwen2(Data, JsonHandler):
                 dataset.append((message, subfolder_name))
 
                 # debug
-                print(f"Dataset: {dataset}")
-                print(type(dataset))
+                # print(f"Dataset: {dataset}")
+                # print(type(dataset))
 
         return dataset
 
     def get_input_and_output(self, data: list[tuple[list[dict], str]]) -> list[tuple[str, str]]:
         separate_outputs: list[tuple[str, str]] = []
 
-        for elem, subfolder_name in data:
+        for elem, subfolder_name in tqdm(data, desc = "Przetwarzanie danych"):
             text = self.processor.apply_chat_template(
                 elem, tokenize=False, add_generation_prompt=True
             )
@@ -171,15 +170,15 @@ class Qwen2(Data, JsonHandler):
                 separate_outputs.append((output, subfolder_name))
 
         # debug
-        print(f"Separate outputs: {separate_outputs}")
-        print(type(separate_outputs))
+        # print(f"Separate outputs: {separate_outputs}")
+        # print(type(separate_outputs))
 
         return separate_outputs
 
     def save_json(self) -> None:
         generated_jsons = self.get_input_and_output(self.get_dataset())
         
-        for i, (output_text, subfolder_name) in enumerate(generated_jsons):
+        for i, (output_text, subfolder_name) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
             try:
                 self.json_dump(context=output_text, idx=i, subfolder=subfolder_name)
             except Exception as e:
