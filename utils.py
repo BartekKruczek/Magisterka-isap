@@ -250,3 +250,19 @@ class Utils(Data):
                     break
 
         print(f"First page text: {first_page_text}")
+
+    @staticmethod
+    def check_length_of_simple_file(image_folder_path: str = None) -> bool:
+        counter: int = 0
+
+        if not image_folder_path:
+            raise ValueError("Path do not exist")
+
+        for root, dirs, files in os.walk(image_folder_path):
+            for elem in files:
+                counter += 1
+
+        if counter <= 10:
+            return True
+        else:
+            return False
