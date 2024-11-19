@@ -6,11 +6,11 @@ import time
 import pandas as pd
 
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
-from qwen_vl_utils import process_vision_info
 from data import Data
 from json_handler import JsonHandler
 from tqdm import tqdm
 from utils import Utils
+from PIL import Image
 
 class Qwen2(Data, JsonHandler):
     def __init__(self) -> None:
@@ -153,26 +153,30 @@ class Qwen2(Data, JsonHandler):
         separate_outputs: list[tuple[str, str]] = []
 
         for elem, subfolder_name in tqdm(data, desc = "Przetwarzanie danych"):
-            text = self.processor.apply_chat_template(
-                elem, tokenize=False, add_generation_prompt=True
-            )
-            image_inputs, video_inputs = process_vision_info(elem)
+            text_inputs: list = []
+            image_inputs: list = []
+
+            # checking if input is text or image
+            for message in elem[0]:
+                if message['type'] == 'text':
+                    text_inputs.append(message)
+                elif message['type'] == 'image':
+                    image_path = message["image"]
+                    image = Image.open(image_path).convert("RGB")
+                    image_inputs.append(image)
+
             inputs = self.processor(
-                text=text,
-                images=image_inputs,
-                videos=video_inputs,
-                padding=True,
-                return_tensors="pt",
-            )
-            inputs = inputs.to("cuda")
+                text = text_inputs,
+                images = image_inputs,
+                padding = True,
+                return_tensors = "pt",
+            ).to(self.device)
 
             generated_ids = self.model.generate(**inputs, max_new_tokens = 32768)
-            generated_ids_trimmed = [
-                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-            ]
             output_text = self.processor.batch_decode(
-                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+                generated_ids, skip_special_tokens = True, clean_up_tokenization_spaces = False
             )
+            
             for output in output_text:
                 separate_outputs.append((output, subfolder_name))
 
