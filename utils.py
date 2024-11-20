@@ -266,3 +266,15 @@ class Utils(Data):
             return True
         else:
             return False
+        
+    @staticmethod
+    def delete_past_jsons() -> None:
+        root_dir: str = "JSON_files"
+
+        for root, dirs, files in os.walk(root_dir):
+            for file in files:
+                file_path: str = os.path.join(root_dir, file)
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print(f"Error occured: {e} in function: delete_past_jsons")
