@@ -1,5 +1,6 @@
 from peft import LoraConfig, TaskType, get_peft_model
 from qwen2 import Qwen2
+from transformers import AdamW
 
 class MyPeft(Qwen2):
     def __init__(self) -> None:
@@ -11,10 +12,11 @@ class MyPeft(Qwen2):
     def get_config(self) -> None:
         config = LoraConfig(
             task_type = TaskType.CAUSAL_LM,
-            target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+            target_modules = ["q_proj", "v_proj"],
             r = 8,
             lora_alpha = 32,
             lora_dropout = 0.1,
+            bias = "None",
         )
         
         return config
@@ -24,3 +26,10 @@ class MyPeft(Qwen2):
         print(model)
         print(model.print_trainable_parameters())
         return model
+    
+    def get_optimizer(self) -> None:
+        # make model in train stadium
+        model_train = self.get_peft_model().train()
+        learning_rate: float = 2e-5
+
+        return AdamW(params = model_train, lr = learning_rate)

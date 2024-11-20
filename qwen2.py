@@ -99,7 +99,7 @@ class Qwen2(Data, Qwen2Half):
 
     def get_dataset(self) -> list[list[dict]]:
         dataset: list[list[dict]] = []
-        max_batch_threshold: int = 5
+        max_batch_threshold: int = 1
 
         # convert to dataframe
         df: pd.ExcelFile = pd.read_excel(self.xlsx_path)
@@ -166,7 +166,7 @@ class Qwen2(Data, Qwen2Half):
             )
             inputs = inputs.to("cuda")
 
-            generated_ids = self.model.generate(**inputs, max_new_tokens = 32768)
+            generated_ids = self.model.generate(**inputs, max_new_tokens = 4096)
             generated_ids_trimmed = [
                 out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
             ]
