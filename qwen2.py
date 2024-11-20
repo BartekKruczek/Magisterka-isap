@@ -11,8 +11,8 @@ from data import Data
 from json_handler import JsonHandler
 from tqdm import tqdm
 from utils import Utils
-
-class Qwen2(Data, JsonHandler):
+from qwen2half import Qwen2Half
+class Qwen2(Data, Qwen2Half):
     def __init__(self) -> None:
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -50,7 +50,7 @@ class Qwen2(Data, JsonHandler):
                 self.model_variant,
                 torch_dtype = torch.bfloat16,
                 attn_implementation = "flash_attention_2",
-                device_map = self.device,
+                device_map = "auto",
                 cache_dir = self.cache_dir,
                 quantization_config = self.get_custom_config(), 
             )
@@ -184,7 +184,6 @@ class Qwen2(Data, JsonHandler):
         return separate_outputs
 
     def save_json(self) -> None:
-        # delete past created jsons, just in case
         Utils.delete_past_jsons()
 
         generated_jsons = self.get_input_and_output(self.get_dataset())

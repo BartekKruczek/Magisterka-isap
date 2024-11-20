@@ -20,7 +20,7 @@ def main():
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
     qwen2 = Qwen2()
-    # qwen2half = Qwen2Half()
+    qwen2half = Qwen2Half()
     # custon_metrics = CustomMetrics()
     # mypeft = MyPeft()
 
@@ -198,7 +198,7 @@ def main():
 
     # json section
     qwen2.save_json()
-    # qwen2half.save_combined_json()
+    qwen2half.save_combined_json()
 
     # metrics section
     # dist: int = custon_metrics.calculate_tree_edit_distance(

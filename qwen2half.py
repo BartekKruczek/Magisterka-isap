@@ -1,8 +1,10 @@
 import torch
 import pandas as pd
+import os
 
 from json_handler import JsonHandler
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from tqdm import tqdm
 
 class Qwen2Half(JsonHandler):
     def __init__(self):
@@ -32,22 +34,20 @@ class Qwen2Half(JsonHandler):
         return quantization_config
     
     def get_model(self):
-        global model
-        model = None
+        if hasattr(self, "model") and self.model is not None:
+            print(f"Model {self.model_variant} already loaded, skipping...")
+            return self.model
 
-        if model is None:
-            model = AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(
             self.model_variant,
             torch_dtype = torch.bfloat16,
             device_map = "auto",
             cache_dir = self.cache_dir,
             attn_implementation = "flash_attention_2",
             quantization_config = self.get_custom_config(),
-            )
-            print(f"Loaded model {model}")
-            return model
-        else:
-            print(f"Model {self.model_variant} already loaded, skipping...")
+        )
+        print(f"Loaded model {self.model_variant}")
+        return model
     
     def get_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.model_variant)
@@ -58,7 +58,7 @@ class Qwen2Half(JsonHandler):
         df = pd.read_excel(self.xlsx_path)
         df_first_row = df.loc[0, "JSON file path"]
 
-        prompt = f"Can you combine three separate json files into one? Here is example of json structure {df_first_row}. All files had been created from one law document. Text to combine: {combined_string}. Leave only generated structure, polish language."
+        prompt = f"Can you combine three separate json files into one? Here is example of json structure {df_first_row}. All files had been created from one law document. Text to combine: {combined_string}. Leave only generated structure."
         messages = [
             {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
             {"role": "user", "content": prompt},
@@ -87,25 +87,30 @@ class Qwen2Half(JsonHandler):
         return response
     
     def save_combined_json(self) -> None:
-        json_text = self.get_response(self.get_dataset(self.json_load(path = "JSON_files")))
+        root_dir: str = "JSON_files"
         max_iterations: int = 3
 
-        for i in range(1, max_iterations + 1):
-            try:
-                self.json_dump(json_text, idx = 999)
-                print(f"Combined json file saved successfully")
-                break
-            except Exception as e:
-                print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+        all_subdirs: list[str] = [os.path.join(root, dir) for root, dirs, _ in os.walk(root_dir) for dir in dirs]
 
-                if i < max_iterations:
-                    # if error occurred, we take response from model and try to save json again
-                    repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text)
-                    json_text = self.get_response(repaired_attempt_message)
+        for dir_path in tqdm(all_subdirs, desc="Przetwarzanie folderów JSON", unit="folder"):
+            json_text = self.get_response(self.get_dataset(self.json_load(path = str(dir_path))))
 
-                    try:
-                        self.json_dump(json_text, idx = 999)
-                        print(f"Combined json file saved successfully")
-                        break
-                    except Exception as e:
-                        print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+            for i in range(1, max_iterations + 1):
+                try:
+                    self.json_dump(json_text, idx = 999)
+                    print(f"Combined json file saved successfully")
+                    break
+                except Exception as e:
+                    print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+
+                    if i < max_iterations:
+                        # if error occurred, we take response from model and try to save json again
+                        repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text)
+                        json_text = self.get_response(repaired_attempt_message)
+
+                        try:
+                            self.json_dump(json_text, idx = 999)
+                            print(f"Combined json file saved successfully")
+                            break
+                        except Exception as e:
+                            print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
