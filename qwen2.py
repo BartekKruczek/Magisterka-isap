@@ -79,8 +79,8 @@ class Qwen2(Data, JsonHandler):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 32 * 28 * 28
-            max_pixels = 32 * 28 * 28
+            min_pixels = 128 * 28 * 28
+            max_pixels = 128 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -128,7 +128,7 @@ class Qwen2(Data, JsonHandler):
 
                     current_message_content.append({
                         "type": "text",
-                        "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Polish language only."
+                        "text": "Make a one, hierarchical .json from the image. Combine it with other messages."
                     })
 
                     message = [
@@ -184,6 +184,9 @@ class Qwen2(Data, JsonHandler):
         return separate_outputs
 
     def save_json(self) -> None:
+        # delete past created jsons, just in case
+        Utils.delete_past_jsons()
+
         generated_jsons = self.get_input_and_output(self.get_dataset())
         
         for i, (output_text, subfolder_name) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
