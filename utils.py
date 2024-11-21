@@ -273,7 +273,7 @@ class Utils(Data):
 
         for root, dirs, files in os.walk(root_dir):
             for file in files:
-                file_path: str = os.path.join(root_dir, file)
+                file_path: str = os.path.join(root, file)
                 try:
                     os.remove(file_path)
                 except Exception as e:
