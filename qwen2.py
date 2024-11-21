@@ -79,8 +79,8 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 128 * 28 * 28
-            max_pixels = 128 * 28 * 28
+            min_pixels = 64 * 28 * 28
+            max_pixels = 64 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 

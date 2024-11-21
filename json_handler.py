@@ -15,6 +15,9 @@ class JsonHandler:
     def json_dump(self, context: str = None, idx: int = None, subfolder: str = '') -> None:
         mkdir_root = "JSON_files"
         subfolder_path = os.path.join(mkdir_root, subfolder)
+        # debug
+        print(str(subfolder_path))
+
         if not os.path.exists(subfolder_path):
             os.makedirs(subfolder_path)
 

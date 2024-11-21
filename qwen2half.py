@@ -91,8 +91,12 @@ class Qwen2Half(JsonHandler):
         max_iterations: int = 3
 
         all_subdirs: list[str] = [os.path.join(root, dir) for root, dirs, _ in os.walk(root_dir) for dir in dirs]
+        # debug
+        print(all_subdirs)
 
-        for dir_path in tqdm(all_subdirs, desc="Przetwarzanie folderów JSON", unit="folder"):
+        for dir_path in tqdm(all_subdirs, desc = "Przetwarzanie folderów JSON", unit = "folder"):
+            # debug
+            print(str(dir_path))
             json_text = self.get_response(self.get_dataset(self.json_load(path = str(dir_path))))
 
             for i in range(1, max_iterations + 1):
