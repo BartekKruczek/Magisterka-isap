@@ -185,11 +185,22 @@ class Qwen2(Data, Qwen2Half):
 
     def save_json(self) -> None:
         Utils.delete_past_jsons()
-
+        max_iter: int = 3
         generated_jsons = self.get_input_and_output(self.get_dataset())
-        
+
         for i, (output_text, subfolder_name) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
-            try:
-                self.json_dump(context=output_text, idx=i, subfolder=subfolder_name)
-            except Exception as e:
-                print(f"Error occurred in {self.save_json.__name__}, error: {e}")
+            for i in range(1, max_iter + 1):
+                try:
+                    self.json_dump(context = output_text, idx = i, subfolder = subfolder_name)
+                    print(f"Json saved successfully!")
+                    break
+                except Exception as e:
+                    print(f"Error occurred in {self.save_json.__name__}, error: {e}")
+
+                    if i <= max_iter:
+                        repaired_message: str = self.auto_repair_json(error_message = str(e), broken_json = output_text)
+
+                        try:
+                            self.json_dump(context = repaired_message, subfolder = subfolder_name)
+                        except Exception as e:
+                            print(f"Error occurred in {self.save_json.__name__}, error: {e}")
