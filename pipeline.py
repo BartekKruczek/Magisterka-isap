@@ -13,6 +13,7 @@ class MyPipeLine:
         self.my_trainer = MyTrainer()
         self.my_metrics = CustomMetrics()
         self.my_qwen2 = Qwen2()
+        self.model_to_train = self.my_peft.get_peft_model()
 
     def __repr__(self) -> str:
         return "Główna klasa do obsługi przepływu informacji z nacieskiem na trening modelu"
@@ -25,14 +26,14 @@ class MyPipeLine:
         # init section
         self.utils.delete_past_jsons()
         iterations_to_save_json: int = 5
-        model = self.my_peft.get_peft_model()
         dataset = self.my_qwen2.get_dataset()
 
         if debug:
             print(f"Len of dataset: {len(dataset)} \n")
             print(f"Dataset: {dataset}")
 
-        for epoch in range(num_epochs):
+        num_epochs: int = 3
+        for epoch in range(1, 1 + num_epochs, 1):
             print(f"Epoch: {epoch}")
-            model.train()
+            self.model_to_train.train()
             total_loss: float = 0

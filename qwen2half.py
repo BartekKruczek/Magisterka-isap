@@ -97,24 +97,30 @@ class Qwen2Half(JsonHandler):
         for dir_path in tqdm(all_subdirs, desc = "Przetwarzanie folderów JSON", unit = "folder"):
             # debug
             print(str(dir_path))
-            json_text = self.get_response(self.get_dataset(self.json_load(path = str(dir_path))))
+            number_json_files: int = [os.path.join(dir_path, file) for file in os.listdir(dir_path) if file.endswith('.json')]
 
-            for i in range(1, max_iterations + 1):
-                try:
-                    self.json_dump(json_text, idx = 999)
-                    print(f"Combined json file saved successfully")
-                    break
-                except Exception as e:
-                    print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+            # if number of json files is more than 1 combine them
+            if len(number_json_files) > 1:
+                json_text = self.get_response(self.get_dataset(self.json_load(path = str(dir_path))))
 
-                    if i < max_iterations:
-                        # if error occurred, we take response from model and try to save json again
-                        repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text)
-                        json_text = self.get_response(repaired_attempt_message)
+                for i in range(1, max_iterations + 1):
+                    try:
+                        self.json_dump(json_text, idx = 999, subfolder = dir_path)
+                        print(f"Combined json file saved successfully")
+                        break
+                    except Exception as e:
+                        print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
 
-                        try:
-                            self.json_dump(json_text, idx = 999)
-                            print(f"Combined json file saved successfully")
-                            break
-                        except Exception as e:
-                            print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+                        if i < max_iterations:
+                            # if error occurred, we take response from model and try to save json again
+                            repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text)
+                            json_text = self.get_response(repaired_attempt_message)
+
+                            try:
+                                self.json_dump(json_text, idx = 999, subfolder = dir_path)
+                                print(f"Combined json file saved successfully")
+                                break
+                            except Exception as e:
+                                print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+            else:
+                continue

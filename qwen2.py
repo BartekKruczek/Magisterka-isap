@@ -34,7 +34,7 @@ class Qwen2(Data, Qwen2Half):
         # custom quantization method
         quantization_config = BitsAndBytesConfig(
             load_in_4bit = True,
-            llm_int8_enable_fp32_cpu_offload = False
+            llm_int8_enable_fp32_cpu_offload = True
         )
 
         return quantization_config
@@ -79,8 +79,8 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 128 * 28 * 28
-            max_pixels = 128 * 28 * 28
+            min_pixels = 256 * 28 * 28
+            max_pixels = 256 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -185,7 +185,7 @@ class Qwen2(Data, Qwen2Half):
 
     def save_json(self) -> None:
         Utils.delete_past_jsons()
-        max_iter: int = 3
+        max_iter: int = 5
         generated_jsons = self.get_input_and_output(self.get_dataset())
 
         for i, (output_text, subfolder_name) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
