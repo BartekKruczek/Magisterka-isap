@@ -5,6 +5,8 @@ from peft_lora import MyPeft
 from trainer import MyTrainer
 from metrics import CustomMetrics
 from qwen2 import Qwen2
+from tqdm import tqdm
+from qwen_vl_utils import process_vision_info
 
 class MyPipeLine:
     def __init__(self) -> None:
@@ -27,6 +29,7 @@ class MyPipeLine:
         self.utils.delete_past_jsons()
         iterations_to_save_json: int = 5
         dataset = self.my_qwen2.get_dataset()
+        separate_outputs: list[tuple[str, str]] = []
 
         if debug:
             print(f"Len of dataset: {len(dataset)} \n")
@@ -37,3 +40,33 @@ class MyPipeLine:
             print(f"Epoch: {epoch}")
             self.model_to_train.train()
             total_loss: float = 0
+
+            # iterate over dataset
+            for elem, subfolder_name in tqdm(dataset, desc = "Over dataset training"):
+                text = self.processor.apply_chat_template(
+                elem, tokenize=False, add_generation_prompt=True
+                )
+                image_inputs, video_inputs = process_vision_info(elem)
+                inputs = self.processor(
+                    text=text,
+                    images=image_inputs,
+                    videos=video_inputs,
+                    padding=True,
+                    return_tensors="pt",
+                )
+                inputs = inputs.to("cuda")
+
+                generated_ids = self.model.generate(**inputs, max_new_tokens = 4096)
+                generated_ids_trimmed = [
+                    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+                ]
+                output_text = self.processor.batch_decode(
+                    generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+                )
+                for output in output_text:
+                    separate_outputs.append((output, subfolder_name))
+
+                if debug:
+                    print(type(separate_outputs))
+                    print(len(separate_outputs))
+                
