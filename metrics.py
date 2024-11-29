@@ -6,11 +6,9 @@ class CustomMetrics(JsonHandler):
     def __init__(self) -> None:
         super().__init__()
 
-    def calculate_tree_edit_distance(self, json_generated_path: str = None, json_test_path: str = None, debug: bool = False) -> int:
-        json_generated, json_test = self.json_load_TED(
-            json_file1_path = json_generated_path, 
-            json_file2_path = json_test_path,
-            )
+    def calculate_tree_edit_distance(self, json_generated: str = None, json_test_path: str = None, debug: bool = True) -> int:
+        json_generated: str = json_generated
+        json_test: str = self.json_load_TED(json_file2_path = json_test_path)
 
         if json_generated is None or json_test is None:
             print(f'Error loading json files in {self.calculate_tree_edit_distance.__name__}')
