@@ -1,13 +1,14 @@
 import torch
 import pandas as pd
 import os
+import json
 
 from json_handler import JsonHandler
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from tqdm import tqdm
 
 class Qwen2Half(JsonHandler):
-    def __init__(self):
+    def __init__(self, model = None):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.model_variant = "Qwen/Qwen2.5-72B-Instruct"
@@ -18,7 +19,7 @@ class Qwen2Half(JsonHandler):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = self.get_model()
+        self.model = model
         self.tokenizer = self.get_tokenizer()
 
     def __repr__(self) -> str:
@@ -85,6 +86,34 @@ class Qwen2Half(JsonHandler):
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
         return response
+
+    def get_response_training(self, messages: list[str] = None, debug: bool = True) -> str:
+        if debug and not messages:
+            raise ValueError("No messages provided for training response generation.")
+        
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        model_inputs = self.tokenizer(
+            [text],
+            return_tensors="pt",
+            padding=True,
+            truncation=True
+        ).to("cuda")
+
+        generated_ids = self.model.generate(
+            **model_inputs,
+            max_new_tokens=1024,
+        )
+
+        generated_ids_trimmed = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+        response = self.tokenizer.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0]
+
+        return response
     
     def save_combined_json(self) -> None:
         root_dir: str = "JSON_files"
@@ -124,3 +153,28 @@ class Qwen2Half(JsonHandler):
                                 print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
             else:
                 continue
+
+    def make_json_from_generated_text(self, generated_text: list[str] = None, subfolder_name: str = None) -> json:
+        json_text_to_dump: str = self.get_response_training(messages = generated_text)
+        root_dir: str = "JSON_files"
+        max_iterations: int = 3
+
+        for i in range(1, max_iterations + 1, 1):
+            try:
+                self.json_dump(json_text_to_dump, idx = 999, subfolder = os.path.join(root_dir, subfolder_name))
+                print(f"Combined json file saved successfully")
+                break
+            except Exception as e:
+                print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
+
+                if i < max_iterations:
+                    # if error occurred, we take response from model and try to save json again
+                    repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text_to_dump)
+                    json_text = self.get_response(repaired_attempt_message)
+
+                    try:
+                        self.json_dump(json_text, idx = 999, subfolder = os.path.join(root_dir, subfolder_name))
+                        print(f"Combined json file saved successfully")
+                        break
+                    except Exception as e:
+                        print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")

@@ -13,7 +13,7 @@ from tqdm import tqdm
 from utils import Utils
 from qwen2half import Qwen2Half
 class Qwen2(Data, Qwen2Half):
-    def __init__(self) -> None:
+    def __init__(self, model = None) -> None:
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
@@ -24,7 +24,7 @@ class Qwen2(Data, Qwen2Half):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = self.get_model()
+        self.model = model
         self.processor = self.get_processor()
 
     def __repr__(self) -> str:

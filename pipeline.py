@@ -5,20 +5,71 @@ from peft_lora import MyPeft
 from trainer import MyTrainer
 from metrics import CustomMetrics
 from qwen2 import Qwen2
+from qwen2half import Qwen2Half
 from tqdm import tqdm
 from qwen_vl_utils import process_vision_info
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig, AutoModelForCausalLM
 
 class MyPipeLine:
     def __init__(self) -> None:
+        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
+        self.model_variant_half = "Qwen/Qwen2.5-72B-Instruct"
+        self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
+        
+        self.model_qwen2 = self.get_model_qwen2()
+        self.model_qwen2half = self.get_model_qwen2half()
+
         self.utils = Utils
         self.my_peft = MyPeft()
         self.my_trainer = MyTrainer()
         self.my_metrics = CustomMetrics()
-        self.my_qwen2 = Qwen2()
+        self.my_qwen2 = Qwen2(model = self.model_qwen2)
+        self.my_qwen2half = Qwen2Half(model = self.model_qwen2half)
         self.model_to_train = self.my_peft.get_peft_model()
 
     def __repr__(self) -> str:
         return "Główna klasa do obsługi przepływu informacji z nacieskiem na trening modelu"
+    
+    def get_custom_config(self) -> None:
+        # custom quantization method
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit = True,
+            llm_int8_enable_fp32_cpu_offload = True
+        )
+        return quantization_config
+    
+    def get_model_qwen2(self):
+        # check if model already loaded version 2.0
+        if hasattr(self, "model_qwen2") and self.model_qwen2 is not None:
+            print(f"Model {self.model_variant} already loaded, skipping...")
+            return self.model_qwen2
+        
+        model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self.model_variant,
+            torch_dtype = torch.bfloat16,
+            attn_implementation = "flash_attention_2",
+            device_map = "auto",
+            cache_dir = self.cache_dir,
+            quantization_config = self.get_custom_config(), 
+        )
+        print(f"Loaded model {self.model_variant}")
+        return model
+    
+    def get_model_qwen2half(self):
+        if hasattr(self, "model_qwen2half") and self.model_qwen2half is not None:
+            print(f"Model {self.model_variant_half} already loaded, skipping...")
+            return self.model_qwen2half
+
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_variant_half,
+            torch_dtype = torch.bfloat16,
+            device_map = "auto",
+            cache_dir = self.cache_dir,
+            attn_implementation = "flash_attention_2",
+            quantization_config = self.get_custom_config(),
+        )
+        print(f"Loaded model {self.model_variant_half}")
+        return model
     
     def train(self, model = None, optimizer = None, criterion = None, num_epochs: int = None, debug: bool = True) -> None:
         """
@@ -40,9 +91,15 @@ class MyPipeLine:
             print(f"Epoch: {epoch}")
             self.model_to_train.train()
             total_loss: float = 0
+            elem_counter: int = 0
 
             # iterate over dataset
-            for elem, subfolder_name in tqdm(dataset, desc = "Over dataset training"):
+            for elem, subfolder_name in dataset:
+                elem_counter += 1
+                print("-----------------------------------")
+                print(f"Processing element number {elem_counter} of {len(dataset)} \n")
+
+                # qwen2 section
                 text = self.my_qwen2.processor.apply_chat_template(
                 elem, tokenize=False, add_generation_prompt=True
                 )
@@ -60,13 +117,19 @@ class MyPipeLine:
                 generated_ids_trimmed = [
                     out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
                 ]
-                output_text = self.my_qwen2.processor.batch_decode(
+                output_text: list[str] = self.my_qwen2.processor.batch_decode(
                     generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
                 )
+                print(f"Generated output: {output_text}")
+                print(f"Type od output: {type(output_text)}")
+                print(f"Subfolder name: {subfolder_name}")
+
+                # qwen2half section
+                self.my_qwen2half.make_json_from_generated_text(generated_text = output_text, subfolder_name = subfolder_name)
+
                 for output in output_text:
                     separate_outputs.append((output, subfolder_name))
 
-                    if debug:
-                        print(type(separate_outputs))
-                        print(len(separate_outputs))
-                
+                if debug:
+                    print(type(separate_outputs))
+                    print(len(separate_outputs))

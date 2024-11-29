@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=288
-#SBATCH --time=00:30:00
+#SBATCH --time=12:00:00
 #SBATCH --account=plgexaile2-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --mail-user=bkruczekk@student.agh.edu.pl
