@@ -106,8 +106,9 @@ class Qwen2(Data, Qwen2Half):
         dataframe = pd.DataFrame(df)
 
         # iterate over .xlsx for JSON and image folder paths
-        for index, row in tqdm(dataframe.iterrows(), total = df.shape[0], desc = "Generowanie datasetu"):
+        for _, row in tqdm(dataframe.iterrows(), total = df.shape[0], desc = "Generowanie datasetu"):
             images_folder_path: str = row["Image folder path"]
+            json_ground_path: str = row["JSON file path"]
 
             # check if document is less than 10 pages, else skipp
             if Utils.check_length_of_simple_file(image_folder_path = images_folder_path):
@@ -138,7 +139,7 @@ class Qwen2(Data, Qwen2Half):
                         },
                     ]
 
-                    dataset.append((message, subfolder_name))
+                    dataset.append((message, subfolder_name, json_ground_path))
 
                     # debug
                     # print(f"Dataset: {dataset}")

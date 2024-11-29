@@ -161,7 +161,7 @@ class Qwen2Half(JsonHandler):
 
         for i in range(1, max_iterations + 1, 1):
             try:
-                self.json_dump(json_text_to_dump, idx = 999, subfolder = os.path.join(root_dir, subfolder_name))
+                self.json_dump(json_text_to_dump, idx = 999, subfolder = subfolder_name)
                 print(f"Combined json file saved successfully")
                 break
             except Exception as e:
@@ -173,7 +173,7 @@ class Qwen2Half(JsonHandler):
                     json_text = self.get_response(repaired_attempt_message)
 
                     try:
-                        self.json_dump(json_text, idx = 999, subfolder = os.path.join(root_dir, subfolder_name))
+                        self.json_dump(json_text, idx = 999, subfolder = subfolder_name)
                         print(f"Combined json file saved successfully")
                         break
                     except Exception as e:

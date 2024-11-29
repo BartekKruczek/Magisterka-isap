@@ -94,7 +94,7 @@ class MyPipeLine:
             elem_counter: int = 0
 
             # iterate over dataset
-            for elem, subfolder_name in dataset:
+            for elem, subfolder_name, json_ground_path in dataset:
                 elem_counter += 1
                 print("-----------------------------------")
                 print(f"Processing element number {elem_counter} of {len(dataset)} \n")
@@ -113,7 +113,7 @@ class MyPipeLine:
                 )
                 inputs = inputs.to("cuda")
 
-                generated_ids = self.my_qwen2.model.generate(**inputs, max_new_tokens = 4096)
+                generated_ids = self.my_qwen2.model.generate(**inputs, max_new_tokens = 16384)
                 generated_ids_trimmed = [
                     out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
                 ]
@@ -125,7 +125,17 @@ class MyPipeLine:
                 print(f"Subfolder name: {subfolder_name}")
 
                 # qwen2half section
-                self.my_qwen2half.make_json_from_generated_text(generated_text = output_text, subfolder_name = subfolder_name)
+                dumped_text: str = self.my_qwen2half.make_json_from_generated_text(
+                    generated_text = output_text, 
+                    subfolder_name = subfolder_name
+                )
+
+                # metrics section
+                calculated_TED: int = self.my_metrics.calculate_tree_edit_distance(
+                    json_generated = dumped_text,
+                    json_test_path = json_ground_path
+                    )
+                print(f"Calculated TED: {calculated_TED}")
 
                 for output in output_text:
                     separate_outputs.append((output, subfolder_name))
