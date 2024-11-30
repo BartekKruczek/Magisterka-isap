@@ -16,9 +16,10 @@
 - dodać metrykę levensteina na tekście
 - ~~dodać metrykę TED (tree edit distance) na kluczach `jsonów`~~
 - dodać aby w prompcie nowa wiadomość zaczynała się od ostatniej strony wcześniejszej wiadomości
-- dodać usuwanie starszych `jsonów` z batchy jak uda się je połączyć w jeden
+- ~~dodać usuwanie starszych `jsonów` z batchy jak uda się je połączyć w jeden~~
 - wymyśleć jak zapisywać skutecznie te pliki
-- dodać iterowanie po `matching_dates_cleaned`, bo to nasz zbiór danych par plików
+- ~~dodać iterowanie po `matching_dates_cleaned`, bo to nasz zbiór danych par plików~~
+- dodać iterowanie w batchach po datasecie
 - [peft GitHub](https://github.com/huggingface/peft)
 - [zss - tree edit distance](https://github.com/timtadh/zhang-shasha)
 
