@@ -17,7 +17,7 @@ class Qwen2(Data, Qwen2Half):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
-        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
+        self.model_variant = "Qwen/Qwen2-VL-7B-Instruct"
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"

@@ -1,4 +1,5 @@
 import torch
+import time
 
 from utils import Utils
 from peft_lora import MyPeft
@@ -12,8 +13,8 @@ from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAnd
 
 class MyPipeLine:
     def __init__(self) -> None:
-        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
-        self.model_variant_half = "Qwen/Qwen2.5-72B-Instruct"
+        self.model_variant = "Qwen/Qwen2-VL-7B-Instruct"
+        self.model_variant_half = "Qwen/Qwen2.5-7B-Instruct"
         self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
         
         self.model_qwen2 = self.get_model_qwen2()
@@ -88,16 +89,17 @@ class MyPipeLine:
 
         num_epochs: int = 1
         for epoch in range(1, 1 + num_epochs, 1):
+            start_time: float = time.time()
             print(f"Epoch: {epoch}")
             self.model_to_train.train()
             total_loss: float = 0
             elem_counter: int = 0
 
             # iterate over dataset
-            for elem, subfolder_name, json_ground_path in dataset:
+            for elem, subfolder_name, json_ground_path in tqdm(dataset, desc = "Iter over dataset"):
                 elem_counter += 1
-                print("-----------------------------------")
-                print(f"Processing element number {elem_counter} of {len(dataset)} \n")
+                tqdm.write("-----------------------------------")
+                tqdm.write(f"Processing element number {elem_counter} of {len(dataset)} \n")
 
                 # qwen2 section
                 text = self.my_qwen2.processor.apply_chat_template(
@@ -113,16 +115,16 @@ class MyPipeLine:
                 )
                 inputs = inputs.to("cuda")
 
-                generated_ids = self.my_qwen2.model.generate(**inputs, max_new_tokens = 16384)
+                generated_ids = self.my_qwen2.model.generate(**inputs, max_new_tokens = 4096)
                 generated_ids_trimmed = [
                     out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
                 ]
                 output_text: list[str] = self.my_qwen2.processor.batch_decode(
                     generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
                 )
-                print(f"Generated output: {output_text}")
-                print(f"Type od output: {type(output_text)}")
-                print(f"Subfolder name: {subfolder_name}")
+                tqdm.write(f"Generated output: {output_text}")
+                tqdm.write(f"Type od output: {type(output_text)}")
+                tqdm.write(f"Subfolder name: {subfolder_name}")
 
                 # qwen2half section
                 dumped_text: str = self.my_qwen2half.make_json_from_generated_text(
@@ -135,11 +137,14 @@ class MyPipeLine:
                     json_generated = dumped_text,
                     json_test_path = json_ground_path
                     )
-                print(f"Calculated TED: {calculated_TED}")
+                tqdm.write(f"Calculated TED: {calculated_TED}")
 
                 for output in output_text:
                     separate_outputs.append((output, subfolder_name))
 
                 if debug:
-                    print(type(separate_outputs))
-                    print(len(separate_outputs))
+                    tqdm.write(type(separate_outputs))
+                    tqdm.write(len(separate_outputs))
+
+            end_time: float = time.time()
+            tqdm.write(f"Time elapsed: {str(end_time - start_time)}")
