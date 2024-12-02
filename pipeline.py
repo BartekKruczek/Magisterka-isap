@@ -2,6 +2,7 @@ import torch
 import time
 
 from utils import Utils
+from data import Data
 from peft_lora import MyPeft
 from trainer import MyTrainer
 from metrics import CustomMetrics
@@ -20,7 +21,8 @@ class MyPipeLine:
         self.model_qwen2 = self.get_model_qwen2()
         self.model_qwen2half = self.get_model_qwen2half()
 
-        self.utils = Utils
+        self.my_utils = Utils
+        self.my_data = Data()
         self.my_peft = MyPeft()
         self.my_trainer = MyTrainer()
         self.my_metrics = CustomMetrics()
@@ -35,7 +37,7 @@ class MyPipeLine:
         # custom quantization method
         quantization_config = BitsAndBytesConfig(
             load_in_4bit = True,
-            llm_int8_enable_fp32_cpu_offload = True
+            llm_int8_enable_fp32_cpu_offload = False
         )
         return quantization_config
     
@@ -78,14 +80,14 @@ class MyPipeLine:
         matching_dates_cleaned.xlsx and fine tune model
         """
         # init section
-        self.utils.delete_past_jsons()
+        self.my_utils.delete_past_jsons()
         iterations_to_save_json: int = 5
         dataset = self.my_qwen2.get_dataset()
         separate_outputs: list[tuple[str, str]] = []
 
         if debug:
             print(f"Len of dataset: {len(dataset)} \n")
-            print(f"Dataset: {dataset}")
+            # print(f"Dataset: {dataset}")
 
         num_epochs: int = 1
         for epoch in range(1, 1 + num_epochs, 1):
@@ -96,14 +98,22 @@ class MyPipeLine:
             elem_counter: int = 0
 
             # iterate over dataset
-            for elem, subfolder_name, json_ground_path in tqdm(dataset, desc = "Iter over dataset"):
+            for elem, subfolder_name, json_ground_path in tqdm(dataset, desc = "Iter over dataset", leave = True, dynamic_ncols = True):
                 elem_counter += 1
-                tqdm.write("-----------------------------------")
-                tqdm.write(f"Processing element number {elem_counter} of {len(dataset)} \n")
+                print("\n")
+                print("-----------------------------------", flush = True)
+                print(f"Processing element number {elem_counter} of {len(dataset)} \n", flush = True)
+
+                if debug:
+                    print(f"Processing element: {elem} \n", flush = True)
+                    print(f"Subfolder name: {subfolder_name} \n", flush = True)
+                    print(f"Processing json ground path: {json_ground_path} \n", flush = True)
 
                 # qwen2 section
                 text = self.my_qwen2.processor.apply_chat_template(
-                elem, tokenize=False, add_generation_prompt=True
+                elem, 
+                tokenize = False, 
+                add_generation_prompt = True
                 )
                 image_inputs, video_inputs = process_vision_info(elem)
                 inputs = self.my_qwen2.processor(
@@ -115,36 +125,44 @@ class MyPipeLine:
                 )
                 inputs = inputs.to("cuda")
 
-                generated_ids = self.my_qwen2.model.generate(**inputs, max_new_tokens = 4096)
+                generated_ids = self.my_qwen2.model.generate(**inputs, max_new_tokens = 8192)
                 generated_ids_trimmed = [
                     out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
                 ]
                 output_text: list[str] = self.my_qwen2.processor.batch_decode(
                     generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
                 )
-                tqdm.write(f"Generated output: {output_text}")
-                tqdm.write(f"Type od output: {type(output_text)}")
-                tqdm.write(f"Subfolder name: {subfolder_name}")
+
+                if debug:
+                    # print(f"Generated output: {output_text}", flush = True)
+                    print(f"Type od output: {type(output_text)}", flush = True)
+                    print(f"Subfolder name: {subfolder_name}", flush = True)
+                    print(f"Output text: {output_text}", flush = True)
 
                 # qwen2half section
                 dumped_text: str = self.my_qwen2half.make_json_from_generated_text(
                     generated_text = output_text, 
-                    subfolder_name = subfolder_name
+                    subfolder_name = subfolder_name,
+                    json_path = json_ground_path,
                 )
+
+                if debug:
+                    print(f"Dumped text: {dumped_text}")
 
                 # metrics section
                 calculated_TED: int = self.my_metrics.calculate_tree_edit_distance(
                     json_generated = dumped_text,
                     json_test_path = json_ground_path
                     )
-                tqdm.write(f"Calculated TED: {calculated_TED}")
+                print(f"Calculated TED: {calculated_TED}", flush = True)
 
                 for output in output_text:
                     separate_outputs.append((output, subfolder_name))
 
                 if debug:
-                    tqdm.write(type(separate_outputs))
-                    tqdm.write(len(separate_outputs))
+                    print(f"Type of separate outputs: {type(separate_outputs)}", flush = True)
+                    print(f"Len of separate outputs: {len(separate_outputs)}", flush = True)
 
-            end_time: float = time.time()
-            tqdm.write(f"Time elapsed: {str(end_time - start_time)}")
+                end_time: float = time.time()
+                elapsed_time: float = (end_time - start_time) / 60
+                print(f"Time elapsed: {elapsed_time:.2} minutes", flush = True)

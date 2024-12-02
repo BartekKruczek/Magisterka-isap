@@ -79,8 +79,8 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 256 * 28 * 28
-            max_pixels = 256 * 28 * 28
+            min_pixels = 512 * 28 * 28
+            max_pixels = 1024 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -97,7 +97,7 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
 
-    def get_dataset(self) -> list[list[dict]]:
+    def get_dataset(self, debug: bool = False) -> list[list[dict]]:
         dataset: list[list[dict]] = []
         max_batch_threshold: int = 5
 
@@ -129,7 +129,7 @@ class Qwen2(Data, Qwen2Half):
 
                     current_message_content.append({
                         "type": "text",
-                        "text": "Make a one, hierarchical .json from the image. Combine it with other messages."
+                        "text": "Extract available text from images. Make a one, hierarchical .json structure from the all given images. Combine it with other messages. Leave only what you have generated"
                     })
 
                     message = [
@@ -141,10 +141,10 @@ class Qwen2(Data, Qwen2Half):
 
                     dataset.append((message, subfolder_name, json_ground_path))
 
-                    # debug
-                    # print(f"Dataset: {dataset}")
-                    print(type(dataset))
-                    print(len(dataset))
+                    if debug:
+                        print(f"Dataset: {dataset}")
+                        print(type(dataset))
+                        print(len(dataset))
             else:
                 continue
 
@@ -167,7 +167,7 @@ class Qwen2(Data, Qwen2Half):
             )
             inputs = inputs.to("cuda")
 
-            generated_ids = self.model.generate(**inputs, max_new_tokens = 4096)
+            generated_ids = self.model.generate(**inputs, max_new_tokens = 32768)
             generated_ids_trimmed = [
                 out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
             ]

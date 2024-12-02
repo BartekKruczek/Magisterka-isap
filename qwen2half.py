@@ -66,7 +66,16 @@ class Qwen2Half(JsonHandler):
         ]
 
         return messages
-    
+
+    def combine_jsons_together(self, text_to_combine: str = None, json_ground_path: str = None) -> list[dict]:
+        loaded_json: str = self.json_load(json_ground_path)
+
+        prompt = f"Can you combine these json structures into one? Here is example of json structure {loaded_json}. All files had been created from one law document. Text to combine: {text_to_combine}. Leave only generated structure."
+        messages = [
+            {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+
     def get_response(self, messages: list[dict] = None) -> str:
         text = self.tokenizer.apply_chat_template(
             messages,
@@ -93,19 +102,17 @@ class Qwen2Half(JsonHandler):
         
         text = self.tokenizer.apply_chat_template(
             messages,
-            tokenize=False,
-            add_generation_prompt=True
+            tokenize = False,
+            add_generation_prompt = True
         )
         model_inputs = self.tokenizer(
             [text],
             return_tensors="pt",
-            padding=True,
-            truncation=True
         ).to("cuda")
 
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=1024,
+            max_new_tokens = 4096,
         )
 
         generated_ids_trimmed = [
@@ -154,27 +161,40 @@ class Qwen2Half(JsonHandler):
             else:
                 continue
 
-    def make_json_from_generated_text(self, generated_text: list[str] = None, subfolder_name: str = None) -> json:
-        json_text_to_dump: str = self.get_response_training(messages = generated_text)
-        root_dir: str = "JSON_files"
+    def make_json_from_generated_text(self, 
+                                      generated_text: list[str] = None, 
+                                      subfolder_name: str = None, 
+                                      json_path: str = None,
+                                      debug: bool = True) -> json:
+        
+        json_text_to_dump: str = self.get_response_training(self.combine_jsons_together(
+            text_to_combine = generated_text, 
+            json_ground_path = json_path,
+            ))
         max_iterations: int = 3
+
+        if debug:
+            print(f"Type of json text to dump: {type(json_text_to_dump)} \n")
+            print(f"Json text to dump: {json_text_to_dump}")
 
         for i in range(1, max_iterations + 1, 1):
             try:
+                # json_text_to_dump = json.loads(json_text_to_dump)
                 self.json_dump(json_text_to_dump, idx = 999, subfolder = subfolder_name)
                 print(f"Combined json file saved successfully")
-                break
+                return json_text_to_dump
             except Exception as e:
                 print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")
 
                 if i < max_iterations:
                     # if error occurred, we take response from model and try to save json again
-                    repaired_attempt_message = self.auto_repair_json(error_message = str(e), broken_json = json_text_to_dump)
-                    json_text = self.get_response(repaired_attempt_message)
+                    repaired_attempt_message: str = self.auto_repair_json(error_message = str(e), broken_json = json_text_to_dump)
+                    json_text: str = self.get_response(repaired_attempt_message)
 
                     try:
+                        json_text = json.loads(json_text)
                         self.json_dump(json_text, idx = 999, subfolder = subfolder_name)
                         print(f"Combined json file saved successfully")
-                        break
+                        return json_text
                     except Exception as e:
                         print(f"Error occurred in {self.save_combined_json.__name__}, error: {e}")

@@ -21,15 +21,18 @@ class MyPeft(Qwen2):
         
         return config
     
-    def get_peft_model(self) -> None:
+    def get_peft_model(self, debug: bool = False) -> None:
         # check if model already exist
         if hasattr(self, "peft_model") and self.peft_model is not None:
             print(f"Model already loaded, skipping...")
             return self.peft_model
 
         self.peft_model = get_peft_model(self.get_model(), self.get_config())
-        print(self.peft_model)
-        print(self.peft_model.print_trainable_parameters())
+
+        if debug:
+            print(self.peft_model)
+            print(self.peft_model.print_trainable_parameters())
+            
         return self.peft_model
     
     def get_optimizer(self) -> None:

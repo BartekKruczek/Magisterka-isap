@@ -12,11 +12,12 @@ class JsonHandler:
     def __repr__(self) -> str:
         return "Klasa do obsługi wszelakiej maści plików json"
     
-    def json_dump(self, context: str = None, idx: int = None, subfolder: str = '') -> None:
+    def json_dump(self, context: str = None, idx: int = None, subfolder: str = '', debug: bool = True) -> None:
         mkdir_root = "JSON_files"
         subfolder_path = os.path.join(mkdir_root, subfolder)
-        # debug
-        print(str(subfolder_path))
+        
+        if debug:
+            print(str(subfolder_path))
 
         if not os.path.exists(subfolder_path):
             os.makedirs(subfolder_path)
@@ -32,7 +33,7 @@ class JsonHandler:
         try:
             json_obj = json.loads(cleaned_json_text)
             with open(f"{subfolder_path}/{my_time}_{idx}.json", "w", encoding='utf-8') as f:
-                json.dump(json_obj, f, indent=4, ensure_ascii=False)
+                json.dump(json_obj, f, indent = 4, ensure_ascii = False)
         except Exception as e:
             print(f"Error occurred in {self.json_dump.__name__}, error: {e}")
 
@@ -50,7 +51,6 @@ class JsonHandler:
         prompt: str = f"Json structure is not valid, because of {error_message}. Fix it {broken_json}. Polish language only."
 
         messages: list[dict] = [
-            {"role": "system", "content": "You are a helpful assistant capable of fixing json structure."},
             {"role": "user", "content": prompt}
         ]
 

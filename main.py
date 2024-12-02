@@ -26,6 +26,8 @@ def main():
     # mypeft = MyPeft()
     my_pipeline = MyPipeLine()
 
+    data.clear_cache_memory()
+
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
 
