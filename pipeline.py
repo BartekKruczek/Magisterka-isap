@@ -14,8 +14,8 @@ from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAnd
 
 class MyPipeLine:
     def __init__(self) -> None:
-        self.model_variant = "Qwen/Qwen2-VL-7B-Instruct"
-        self.model_variant_half = "Qwen/Qwen2.5-7B-Instruct"
+        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
+        self.model_variant_half = "Qwen/Qwen2.5-72B-Instruct"
         self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
         
         self.model_qwen2 = self.get_model_qwen2()

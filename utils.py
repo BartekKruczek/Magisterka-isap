@@ -262,7 +262,7 @@ class Utils(Data):
             for elem in files:
                 counter += 1
 
-        if counter <= 5:
+        if counter <= 1:
             return True
         else:
             return False

@@ -13,7 +13,7 @@ from tqdm import tqdm
 from utils import Utils
 from qwen2half import Qwen2Half
 class Qwen2(Data, Qwen2Half):
-    def __init__(self, model = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
@@ -24,7 +24,8 @@ class Qwen2(Data, Qwen2Half):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = model
+        self.model = self.get_model()
+        # self.model = model
         self.processor = self.get_processor()
 
     def __repr__(self) -> str:
@@ -79,8 +80,8 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 512 * 28 * 28
-            max_pixels = 1024 * 28 * 28
+            min_pixels = 64 * 28 * 28
+            max_pixels = 128 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -129,7 +130,7 @@ class Qwen2(Data, Qwen2Half):
 
                     current_message_content.append({
                         "type": "text",
-                        "text": "Extract available text from images. Make a one, hierarchical .json structure from the all given images. Combine it with other messages. Leave only what you have generated"
+                        "text": "Make a one, hierarchical .json from the image. Combine it with other messages."
                     })
 
                     message = [
@@ -153,7 +154,7 @@ class Qwen2(Data, Qwen2Half):
     def get_input_and_output(self, data: list[tuple[list[dict], str]]) -> list[tuple[str, str]]:
         separate_outputs: list[tuple[str, str]] = []
 
-        for elem, subfolder_name in tqdm(data, desc = "Przetwarzanie danych"):
+        for elem, subfolder_name, _ in tqdm(data, desc = "Przetwarzanie danych"):
             text = self.processor.apply_chat_template(
                 elem, tokenize=False, add_generation_prompt=True
             )
@@ -189,7 +190,7 @@ class Qwen2(Data, Qwen2Half):
         max_iter: int = 5
         generated_jsons = self.get_input_and_output(self.get_dataset())
 
-        for i, (output_text, subfolder_name) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
+        for i, (output_text, subfolder_name, json_path) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
             for i in range(1, max_iter + 1):
                 try:
                     self.json_dump(context = output_text, idx = i, subfolder = subfolder_name)

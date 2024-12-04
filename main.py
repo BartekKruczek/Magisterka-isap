@@ -20,13 +20,13 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    # qwen2 = Qwen2()
-    # qwen2half = Qwen2Half()
+    qwen2 = Qwen2()
+    qwen2half = Qwen2Half()
     # custon_metrics = CustomMetrics()
     # mypeft = MyPeft()
-    my_pipeline = MyPipeLine()
+    # my_pipeline = MyPipeLine()
 
-    data.clear_cache_memory()
+    # data.clear_cache_memory()
 
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
@@ -201,8 +201,8 @@ def main():
     # data.create_new_xlsx()
 
     # json section
-    # qwen2.save_json()
-    # qwen2half.save_combined_json()
+    qwen2.save_json()
+    qwen2half.save_combined_json()
 
     # metrics section
     # dist: int = custon_metrics.calculate_tree_edit_distance(
@@ -215,7 +215,7 @@ def main():
     # mypeft.get_peft_model()
 
     # main pipeline section
-    my_pipeline.train()
+    # my_pipeline.train()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60
