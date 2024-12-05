@@ -9,7 +9,7 @@ from qwen2 import Qwen2
 from qwen2half import Qwen2Half 
 from metrics import CustomMetrics
 from peft_lora import MyPeft
-from pipeline import MyPipeLine
+from pipeline import MyPipeline
 
 def main():
     warnings.filterwarnings("ignore")
@@ -20,11 +20,11 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    qwen2 = Qwen2()
-    qwen2half = Qwen2Half()
+    # qwen2 = Qwen2()
+    # qwen2half = Qwen2Half()
     # custon_metrics = CustomMetrics()
     # mypeft = MyPeft()
-    # my_pipeline = MyPipeLine()
+    my_pipeline = MyPipeline()
 
     # data.clear_cache_memory()
 
@@ -201,8 +201,8 @@ def main():
     # data.create_new_xlsx()
 
     # json section
-    qwen2.save_json()
-    qwen2half.save_combined_json()
+    # qwen2.save_json()
+    # qwen2half.save_combined_json()
 
     # metrics section
     # dist: int = custon_metrics.calculate_tree_edit_distance(
@@ -215,7 +215,7 @@ def main():
     # mypeft.get_peft_model()
 
     # main pipeline section
-    # my_pipeline.train()
+    my_pipeline.train()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

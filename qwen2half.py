@@ -11,7 +11,7 @@ class Qwen2Half(JsonHandler):
     def __init__(self, model = None):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-        self.model_variant = "Qwen/Qwen2.5-7B-Instruct"
+        self.model_variant = "Qwen/Qwen2.5-72B-Instruct"
         self.xlsx_path = "matching_dates_cleaned.xlsx"
 
         if self.device.type == "cuda":
@@ -19,7 +19,7 @@ class Qwen2Half(JsonHandler):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = model
+        self.model = model if model is not None else self.get_model()
         self.tokenizer = self.get_tokenizer()
 
     def __repr__(self) -> str:
@@ -75,6 +75,8 @@ class Qwen2Half(JsonHandler):
             {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ]
+
+        return messages
 
     def get_response(self, messages: list[dict] = None) -> str:
         text = self.tokenizer.apply_chat_template(
@@ -167,9 +169,9 @@ class Qwen2Half(JsonHandler):
                                       json_path: str = None,
                                       debug: bool = True) -> json:
         
-        json_text_to_dump: str = self.get_response_training(self.get_dataset(
+        json_text_to_dump: str = self.get_response_training(self.combine_jsons_together(
             text_to_combine = generated_text, 
-            # json_ground_path = json_path,
+            json_ground_path = json_path,
             ))
         max_iterations: int = 3
 

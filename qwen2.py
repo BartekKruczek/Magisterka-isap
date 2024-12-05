@@ -13,18 +13,18 @@ from tqdm import tqdm
 from utils import Utils
 from qwen2half import Qwen2Half
 class Qwen2(Data, Qwen2Half):
-    def __init__(self) -> None:
+    def __init__(self, model = None) -> None:
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
-        self.model_variant = "Qwen/Qwen2-VL-7B-Instruct"
+        self.model_variant = "Qwen/Qwen2-VL-72B-Instruct"
 
         if self.device.type == "cuda":
             self.cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = self.get_model()
+        self.model = model if model is not None else self.get_model()
         # self.model = model
         self.processor = self.get_processor()
 
@@ -80,8 +80,8 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 64 * 28 * 28
-            max_pixels = 128 * 28 * 28
+            min_pixels = 512 * 28 * 28
+            max_pixels = 1024 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
