@@ -92,3 +92,35 @@ class JsonHandler:
                 my_node.add_children(child)
 
         return my_node
+    
+    def json_to_token_convertion(self, json_obj) -> list[str]:
+        """
+        We want to convert generated json to token-kind-of-sequence in order
+        to do supervised learning. Only key value so far, because values in
+        ground truth json could not be trustworthy tbh
+        """
+        created_tokens: list[str] = []
+
+        def search_for_keys(my_obj):
+            if isinstance(my_obj, dict):
+                for key, value in my_obj.items():
+                    # Add unique key to tokens list, e.g., date, article, etc.
+                    created_tokens.append(f"<x_{key}>")
+
+                    # Recursively process the value
+                    search_for_keys(value)
+                    created_tokens.append(f"</x_{key}>")
+            elif isinstance(my_obj, list):
+                created_tokens.append("<list>")
+
+                # Process each item in the list
+                for item in my_obj:
+                    search_for_keys(item)
+                created_tokens.append("</list>")
+            else:
+                # For values that are not dict or list
+                created_tokens.append(str(my_obj))
+
+        search_for_keys(json_obj)
+        
+        return created_tokens
