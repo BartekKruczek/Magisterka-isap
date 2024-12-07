@@ -1,5 +1,7 @@
 import torch
 import time
+import json
+
 from utils import Utils
 from data import Data
 from peft_lora import MyPeft
@@ -7,9 +9,11 @@ from trainer import MyTrainer
 from metrics import CustomMetrics
 from qwen2 import Qwen2
 from qwen2half import Qwen2Half
+from json_handler import JsonHandler
 from tqdm import tqdm
 from qwen_vl_utils import process_vision_info
-from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig, AutoModelForCausalLM
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig, AutoModelForCausalLM, AdamW
+from torch.nn import CrossEntropyLoss
 
 
 class MyPipeline:
@@ -23,6 +27,7 @@ class MyPipeline:
 
         self.my_utils = Utils
         self.my_data = Data()
+        self.my_json = JsonHandler()
         self.my_peft = MyPeft()
         self.my_trainer = MyTrainer()
         self.my_metrics = CustomMetrics()
@@ -43,6 +48,10 @@ class MyPipeline:
         if hasattr(self, "model_qwen2") and self.model_qwen2 is not None:
             print(f"Model {self.model_variant} already loaded, skipping...")
             return self.model_qwen2
+        
+        if hasattr(self, "model_qwen2half") and self.model_qwen2half is not None:
+            print(f"Model {self.model_variant_half} already loaded, skipping...")
+            return self.model_qwen2half
 
         try:
             print(f"Loading model {model_name}...")
@@ -71,11 +80,27 @@ class MyPipeline:
     def train(self, model=None, optimizer=None, criterion=None, num_epochs: int = 1, debug: bool = True) -> None:
         self.my_utils.delete_past_jsons()
         separate_outputs = []
+        
+        self.model_to_train.train()
+        optimizer = AdamW(params = self.model_to_train, lr = 1e-5)
+        criterion = CrossEntropyLoss
+
+        # adding special tokens to tokenizer, only once before training
+        all_special_tokens_from_ground_truth_dataset: list[str] = self.my_json.get_special_tokens_json_ground_truth()
+
+        tokenizer = self.my_qwen2.processor.tokenizer
+        tokenizer_2 = self.my_qwen2half.tokenizer
+
+        num_added_tokens = tokenizer.add_special_tokens({"additional_special_tokens": all_special_tokens_from_ground_truth_dataset})
+        num_added_tokens = tokenizer_2.add_special_tokens({"additional_special_tokens": all_special_tokens_from_ground_truth_dataset})
+        print(f"Added {num_added_tokens} special tokens.")
+
+        self.model_qwen2.resize_token_embeddings(len(tokenizer))
+        self.model_qwen2half.resize_token_embeddings(len(tokenizer_2))
 
         for epoch in range(1, num_epochs + 1):
             print(f"Starting epoch {epoch}")
             start_time = time.time()
-            self.model_to_train.train()
             elem_counter = 0
 
             for elem, subfolder_name, json_ground_path in tqdm(self.dataset_generator(), desc="Processing dataset"):
@@ -102,9 +127,7 @@ class MyPipeline:
                         **inputs,
                         max_new_tokens=2048,  # Limit the number of generated tokens
                         do_sample=True,  # Sampling for faster generation
-                        temperature=0.7,  # Control randomness
-                        top_k=50,  # Top-k sampling
-                        top_p=0.9,  # Nucleus sampling
+                        temperature=0.0,  # No randomness
                         use_cache=True  # Enable caching for faster computation
                     )
                     generated_ids_trimmed = [
@@ -124,11 +147,42 @@ class MyPipeline:
                     )
 
                     # Calculate metrics
-                    calculated_TED = self.my_metrics.calculate_tree_edit_distance(
-                        json_generated=dumped_text,
-                        json_test_path=json_ground_path
-                    )
-                    print(f"Calculated TED: {calculated_TED}", flush=True)
+                    # calculated_TED = self.my_metrics.calculate_tree_edit_distance(
+                    #     json_generated=dumped_text,
+                    #     json_test_path=json_ground_path
+                    # )
+                    # print(f"Calculated TED: {calculated_TED}", flush=True)
+
+                    # dumped text is combined json from one law document, here we convert it to tokens as well as ground truth json
+
+                    # open ground truth json
+                    with open(json_ground_path, "r", encoding="utf-8") as f:
+                        json_obj = json.load(f)
+
+                    truth_tokens: list[str] = self.my_json.json_to_token_conversion(json_obj = json_obj)
+                    
+                    # load dumped json
+                    json_generated = json.load(dumped_text)
+                    generated_tokens: list[str] = self.my_json.json_to_token_conversion(json_obj = json_generated)
+
+                    if debug:
+                        print(f"Json truth tokens: {truth_tokens}")
+                        print(f"Json generated tokens: {generated_tokens}")
+
+                    labels = tokenizer(
+                        truth_tokens,
+                        is_split_into_words = True,
+                        return_tensors = "pt"
+                    ).input_ids.to("cuda")
+
+                    outputs = self.model_qwen2(**inputs, labels = labels)
+                    loss = outputs.loss
+
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+                    print(f"Loss: {loss.item()}", flush = True)
 
                     separate_outputs.append((output_text, subfolder_name))
 
