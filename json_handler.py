@@ -93,34 +93,36 @@ class JsonHandler:
 
         return my_node
     
-    def json_to_token_convertion(self, json_obj) -> list[str]:
+    def json_to_token_conversion(self, json_obj, keys_only: bool = True) -> list[str]:
         """
-        We want to convert generated json to token-kind-of-sequence in order
-        to do supervised learning. Only key value so far, because values in
-        ground truth json could not be trustworthy tbh
+        Konwertuje obiekt JSON na listę tokenów. 
+        - Jeśli keys_only = True, dodaje tylko nazwy kluczy i tokeny strukturalne. 
+        - Jeśli keys_only = False, dodaje również wartości, jeśli nie są one zagnieżdżonymi strukturami.
         """
+
         created_tokens: list[str] = []
 
         def search_for_keys(my_obj):
             if isinstance(my_obj, dict):
                 for key, value in my_obj.items():
-                    # Add unique key to tokens list, e.g., date, article, etc.
                     created_tokens.append(f"<x_{key}>")
+                    
+                    if isinstance(value, (dict, list)):
+                        search_for_keys(value)
+                    else:
+                        if not keys_only:
+                            created_tokens.append(str(value))
 
-                    # Recursively process the value
-                    search_for_keys(value)
                     created_tokens.append(f"</x_{key}>")
+
             elif isinstance(my_obj, list):
                 created_tokens.append("<list>")
-
-                # Process each item in the list
                 for item in my_obj:
                     search_for_keys(item)
                 created_tokens.append("</list>")
             else:
-                # For values that are not dict or list
-                created_tokens.append(str(my_obj))
+                if not keys_only:
+                    created_tokens.append(str(my_obj))
 
         search_for_keys(json_obj)
-        
         return created_tokens
