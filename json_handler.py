@@ -2,6 +2,7 @@ import os
 import json
 import time
 import glob
+import pandas as pd
 
 from node_creator import CustomNodeCreator
 
@@ -93,7 +94,7 @@ class JsonHandler:
 
         return my_node
     
-    def json_to_token_conversion(self, json_obj, keys_only: bool = True) -> list[str]:
+    def json_to_token_conversion(self, json_obj: json, keys_only: bool = True) -> list[str]:
         """
         Konwertuje obiekt JSON na listę tokenów. 
         - Jeśli keys_only = True, dodaje tylko nazwy kluczy i tokeny strukturalne. 
@@ -126,3 +127,34 @@ class JsonHandler:
 
         search_for_keys(json_obj)
         return created_tokens
+    
+    def get_special_tokens_json_ground_truth(self, debug: bool = False) -> list[str]:
+        all_uniqe_tokens: set = set()
+
+        try:
+            df: pd.DataFrame = pd.read_excel("matching_dates_cleaned.xlsx", engine = "openpyxl")
+            json_paths = df["JSON file path"]
+        
+            for elem in json_paths:
+                if not os.path.exists(elem):
+                    print(f"JSON file does not exist at path: {elem}")
+                    continue
+
+                if debug:
+                    print(f"Processing {elem}")
+
+                try:
+                    with open(elem, "r", encoding = "utf-8") as f:
+                        json_obj = json.load(f)
+                
+                    tokens = self.json_to_token_conversion(json_obj = json_obj, keys_only = True)
+                
+                    for t in tokens:
+                        all_uniqe_tokens.add(t)
+                except Exception as e:
+                    print(f"Error processing JSON at {elem}: {e}")
+
+        except Exception as e:
+            print(f"Error occured {str(e)} in function {self.get_special_tokens_json_ground_truth.__name__}")
+    
+        return list(all_uniqe_tokens)
