@@ -12,7 +12,7 @@ class MyPeft(Qwen2):
     
     def get_config(self) -> None:
         config = LoraConfig(
-            task_type = TaskType.CAUSAL_LM,
+            task_type = TaskType.SEQ_2_SEQ_LM,
             target_modules = ["q_proj", "v_proj"],
             r = 8,
             lora_alpha = 32,

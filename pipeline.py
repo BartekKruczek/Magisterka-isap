@@ -83,7 +83,7 @@ class MyPipeline:
               optimizer = None, 
               criterion = None, 
               num_epochs: int = 1, 
-              do_generate_json_during_training: bool = True,
+              do_generate_json_during_training: bool = False,
               do_dump_text: bool = False,
               debug: bool = True) -> None:
         
@@ -203,20 +203,27 @@ class MyPipeline:
                         if do_generate_json_during_training and do_dump_text:
                             print(f"Json generated tokens: {generated_tokens}", flush = True)
 
+                    max_input_length = inputs.input_ids.shape[1]
+
                     labels = tokenizer(
                         truth_tokens,
                         is_split_into_words = True,
                         return_tensors = "pt",
-                        padding = True,
+                        max_length = max_input_length,
+                        padding = "max_length",
                         truncation = True,
                     ).input_ids.to("cuda")
+
+                    labels[labels == tokenizer.pad_token_id] = -100
 
                     if debug:
                         print(f"Shape inputs: {inputs.input_ids.shape}")
                         print(f"Shape labels: {labels.shape}")
 
-                    outputs = model_train(**inputs, labels = labels)
-                    loss = outputs.loss
+                    outputs = model_train(**inputs)
+                    logits = outputs.logits
+
+                    loss = criterion((logits.view(-1, logits.size(-1)), labels.view(-1)))
 
                     loss.backward()
                     optimizer.step()
