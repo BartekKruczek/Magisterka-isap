@@ -8,12 +8,13 @@ from DataCollator import DataSets
 datacollator = DataSets()
 
 quantization_config = BitsAndBytesConfig(
-    load_in_8bit = True,
-    llm_int8_enable_fp32_cpu_offload = False
+    load_in_8bit = False,
+    llm_int8_enable_fp32_cpu_offload = False,
+    bnb_4bit_compute_dtype = torch.float16,
 )
 
 qwen2model = Qwen2VLForConditionalGeneration.from_pretrained(
-    "Qwen/Qwen2-VL-72B-Instruct", 
+    "Qwen/Qwen2-VL-7B-Instruct", 
     torch_dtype = torch.float16,
     device_map = "auto",
     # attn_implementation = "flash_attention_2",
@@ -48,7 +49,7 @@ args = SFTConfig(
     num_train_epochs = 1,
     per_device_train_batch_size = 4,
     gradient_accumulation_steps = 8,
-    gradient_checkpointing = True,
+    gradient_checkpointing = False,
     optim = "adamw_torch_fused",
     logging_steps = 1,
     save_strategy = "epoch",
@@ -62,7 +63,8 @@ args = SFTConfig(
     dataset_kwargs = {"skip_prepare_dataset": True},
 )
 
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-VL-72B-Instruct")
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-VL-7B-Instruct")
+tokenizer.padding_side = "right"
 
 trainer = SFTTrainer(
     model = peft_model,
@@ -71,9 +73,7 @@ trainer = SFTTrainer(
     eval_dataset = valid_set,
     data_collator = collator,
     peft_config = peft_config,
-    # processing_clas = tokenizer,
-    tokenizer = tokenizer,
+    processing_class = tokenizer,
 )
-trainer.processing_class.padding_side = "right"
 
 trainer.train()

@@ -104,61 +104,69 @@ class DataSets:
     def collate_fn(self, examples):
         """
         examples: lista krotek (message, subfolder_name, json_ground_path)
-                zwracanych przez get_dataset()
+        zwracanych przez get_dataset().
         Zwracamy dict z polami np.:
         input_ids, attention_mask, pixel_values, labels, itp.
         """
         processor = AutoProcessor.from_pretrained(
-            "Qwen/Qwen2-VL-72B-Instruct",
+            "Qwen/Qwen2-VL-7B-Instruct",
             cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
             min_pixels = 512 * 28 * 28,
             max_pixels = 1024 * 28 * 28,
         )
 
-        messages = [ex[0] for ex in examples]
-        json_paths = [ex[2] for ex in examples]
-
-        texts = [
-            processor.apply_chat_template(msg, tokenize=False, add_generation_prompt=True)
-            for msg in messages
-        ]
-
+        merged_texts = []
         image_inputs_list = []
-        for msg in messages:
-            image_inputs, _ = process_vision_info(msg)
+
+        for (message, subfolder_name, json_ground_path) in examples:
+            try:
+                with open(json_ground_path, "r", encoding="utf-8") as f:
+                    json_str = f.read()
+            except:
+                json_str = ""
+                print(f"Error loading json file")
+            
+            # 2) Generujemy prompt (z tokenem [IMAGE] itd.) przez apply_chat_template
+            prompt_str = processor.apply_chat_template(
+                message,
+                tokenize = False,
+                add_generation_prompt = True
+            )
+
+            # 3) Sklejamy prompt + docelowe JSON w JEDNĄ sekwencję (teacher forcing)
+            #    Tu można dodać dowolny separator, np. "\n", " Answer: ", itp.
+            merged_text = prompt_str + "\n" + json_str
+            merged_texts.append(merged_text)
+
+            # 4) Wyciągamy obrazy
+            image_inputs, _ = process_vision_info(message)
             image_inputs_list.append(image_inputs)
 
+        # 5) Jednorazowo wywołujemy processor na CAŁYM batchu
         batch = processor(
-            text=texts,
+            text=merged_texts,
             images=image_inputs_list,
             padding=True,
             return_tensors="pt",
         )
 
-        labels_list = []
-        for path in json_paths:
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    text_json = f.read()
-                labels_list.append(text_json)
-            except:
-                labels_list.append("")
-                print(f"Error while reading {path}")
+        # 6) Teacher forcing: labels = input_ids.clone()
+        labels = batch["input_ids"].clone()
 
-        labels_enc = processor.tokenizer(
-            labels_list,
-            return_tensors="pt",
-            padding=True,
-            truncation=True
-        )
-        labels = labels_enc["input_ids"]
-
+        # 7) Ustawiamy -100 na tokenach, których nie chcemy liczyć w cross-entropy:
+        #    - [PAD]
+        #    - tokeny obrazu (np. 151652, 151653, 151655)
+        #    - ewentualnie prompt (jeśli chcesz go też pominąć)
         labels[labels == processor.tokenizer.pad_token_id] = -100
 
+        # Jeśli w Qwen2-VL te ID odpowiadają tokenowi [IMAGE], maskujemy je też:
         potential_image_token_ids = [151652, 151653, 151655]
         for image_token_id in potential_image_token_ids:
             labels[labels == image_token_id] = -100
 
-        batch["labels"] = labels
+        # (opcjonalnie) maskowanie promptu - 
+        #  jeśli prompt jest krótki i zawsze taki sam, możesz heurystycznie
+        #  wykryć jego początkowe tokeny i zamienić na -100.
 
+        batch["labels"] = labels
         return batch
