@@ -8,8 +8,8 @@ from DataCollator import DataSets
 datacollator = DataSets()
 
 quantization_config = BitsAndBytesConfig(
-    load_in_4bit = True,
-    llm_int8_enable_fp32_cpu_offload = True
+    load_in_8bit = True,
+    llm_int8_enable_fp32_cpu_offload = False
 )
 
 qwen2model = Qwen2VLForConditionalGeneration.from_pretrained(
@@ -71,7 +71,8 @@ trainer = SFTTrainer(
     eval_dataset = valid_set,
     data_collator = collator,
     peft_config = peft_config,
-    tokenizer = tokenizer,
+    processing_clas = tokenizer,
 )
+trainer.processing_class.padding_side = "right"
 
 trainer.train()
