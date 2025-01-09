@@ -14,7 +14,7 @@ quantization_config = BitsAndBytesConfig(
 
 qwen2model = Qwen2VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2-VL-72B-Instruct", 
-    torch_dtype = torch.bfloat16,
+    torch_dtype = torch.float16,
     device_map = "auto",
     attn_implementation = "flash_attention_2",
     cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
@@ -45,7 +45,7 @@ print(f"Valid set len: {len(valid_set)}")
 
 args = SFTConfig(
     output_dir = "qwen2-72b",
-    num_train_epochs = 3,
+    num_train_epochs = 1,
     per_device_train_batch_size = 4,
     gradient_accumulation_steps = 8,
     gradient_checkpointing = True,
@@ -53,11 +53,8 @@ args = SFTConfig(
     logging_steps = 1,
     save_strategy = "epoch",
     learning_rate = 2e-4,
-    bf16 = True,
-    tf32 = True,
     max_grad_norm = 0.3,
     warmup_ratio = 0.03,
-    bf16 = True,
     fp16 = True,
     lr_scheduler_type = "constant",
     gradient_checkpointing_kwargs = {"use_reentrant": False},
