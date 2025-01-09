@@ -16,7 +16,7 @@ qwen2model = Qwen2VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2-VL-72B-Instruct", 
     torch_dtype = torch.float16,
     device_map = "auto",
-    attn_implementation = "flash_attention_2",
+    # attn_implementation = "flash_attention_2",
     cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
     quantization_config = quantization_config,
 )
@@ -71,7 +71,8 @@ trainer = SFTTrainer(
     eval_dataset = valid_set,
     data_collator = collator,
     peft_config = peft_config,
-    processing_clas = tokenizer,
+    # processing_clas = tokenizer,
+    tokenizer = tokenizer,
 )
 trainer.processing_class.padding_side = "right"
 
