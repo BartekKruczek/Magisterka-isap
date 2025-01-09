@@ -8,9 +8,11 @@ from DataCollator import DataSets
 datacollator = DataSets()
 
 quantization_config = BitsAndBytesConfig(
-    load_in_8bit = False,
+    load_in_4bit = True,
     llm_int8_enable_fp32_cpu_offload = False,
-    bnb_4bit_compute_dtype = torch.float16,
+    bnb_4bit_compute_dtype = torch.bfloat16,
+    bnb_4bit_use_double_quant = True, 
+    bnb_4bit_quant_type = "nf4",
 )
 
 qwen2model = Qwen2VLForConditionalGeneration.from_pretrained(
@@ -56,7 +58,8 @@ args = SFTConfig(
     learning_rate = 2e-4,
     max_grad_norm = 0.3,
     warmup_ratio = 0.03,
-    fp16 = True,
+    bfp16 = True,
+    tf32 = True,
     lr_scheduler_type = "constant",
     gradient_checkpointing_kwargs = {"use_reentrant": False},
     dataset_text_field = "",
