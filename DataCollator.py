@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from utils import Utils
 from qwen_vl_utils import process_vision_info
-from transformers import AutoProcessor, AutoTokenizer
+from transformers import AutoProcessor
 
 class DataSets:
     def __init__(self, excel_file_path: str = None):
@@ -17,6 +17,13 @@ class DataSets:
     
     def read_excel(self) -> pd.DataFrame:
         return pd.read_excel(self.excel_file_path, engine = 'openpyxl')
+    
+    def sorting_by_page_number(self, png_path: str = None) -> int:
+        split1: str = png_path.split("/")[-1]
+        split2 = split1.split(".")[0]
+        split3 = split2.split("_")[-1]
+
+        return int(split3)
     
     def get_pngs_path_from_folder(self, given_folder_path: str = None) -> list[str]:
         folder_path: str = str(given_folder_path)
@@ -29,7 +36,7 @@ class DataSets:
 
         return sorted(pngs_paths, key = self.sorting_by_page_number)
     
-    def get_dataset(self, debug: bool = True, dataframe: pd.DataFrame = None) -> list[list[dict]]:
+    def get_dataset(self, debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
         dataset: list[list[dict]] = []
         max_batch_threshold: int = 5
 
@@ -107,8 +114,6 @@ class DataSets:
             min_pixels = 512 * 28 * 28,
             max_pixels = 1024 * 28 * 28,
         )
-
-        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-VL-72B-Instruct")
 
         messages = [ex[0] for ex in examples]
         json_paths = [ex[2] for ex in examples]

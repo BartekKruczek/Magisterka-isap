@@ -29,8 +29,19 @@ peft_config = LoraConfig(
     lora_dropout = 0.1,
 )
 
-peft_model = get_peft_model(model = qwen2model, config = peft_config)
-print(f"Trainable model: {peft_model.print_trainable_parameters()}")
+peft_model = get_peft_model(qwen2model, peft_config)
+peft_model.print_trainable_parameters()
+
+# print datasets
+train_set, valid_set = datacollator.split_datasets()
+collator = datacollator.collate_fn
+
+print(f"Train set: {train_set}")
+print(f"Valid set: {valid_set}")
+print(f"Collator: {collator}")
+
+print(f"Train set len: {len(train_set)}")
+print(f"Valid set len: {len(valid_set)}")
 
 args = SFTConfig(
     output_dir = "qwen2-72b",
@@ -54,15 +65,14 @@ args = SFTConfig(
 
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-VL-72B-Instruct")
 
-# trainer = SFTTrainer(
-#     model = peft_model,
-#     args = args,
-#     train_dataset = datacollator.split_datasets()[0],
-#     eval_dataset = datacollator.split_datasets()[1],
-#     data_collator = datacollator.collate_fn,
-#     dataset_text_field = "",
-#     peft_config = peft_config,
-#     tokenizer = tokenizer,
-# )
+trainer = SFTTrainer(
+    model = peft_model,
+    args = args,
+    train_dataset = train_set,
+    eval_dataset = valid_set,
+    data_collator = collator,
+    peft_config = peft_config,
+    tokenizer = tokenizer,
+)
 
-# trainer.train()
+trainer.train()
