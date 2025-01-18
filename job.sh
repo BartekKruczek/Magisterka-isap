@@ -1,8 +1,8 @@
 #!/bin/bash -l
-#SBATCH --job-name=72B
+#SBATCH --job-name=7B
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=288
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=72
 #SBATCH --time=12:00:00
 #SBATCH --account=plgexaile2-gpu-gh200
 #SBATCH --partition=plgrid-gpu-gh200
@@ -14,10 +14,10 @@ module load ML-bundle/24.06a
  
 cd $SCRATCH
 
-source .venv2/bin/activate
+source .venv/bin/activate
 cd /net/storage/pr3/plgrid/plgglemkin/isap/Magisterka-isap
 
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export OMP_NUM_THREADS=288
+# export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export OMP_NUM_THREADS=1
 
 python main.py

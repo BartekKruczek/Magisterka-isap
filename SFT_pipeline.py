@@ -5,6 +5,9 @@ from trl import SFTTrainer, SFTConfig
 from peft import LoraConfig, TaskType, get_peft_model
 from DataCollator import DataSets
 
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+
 datacollator = DataSets()
 
 quantization_config = BitsAndBytesConfig(
@@ -17,12 +20,13 @@ quantization_config = BitsAndBytesConfig(
 
 qwen2model = Qwen2VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2-VL-7B-Instruct", 
-    torch_dtype = torch.float16,
-    device_map = "auto",
+    torch_dtype = torch.bfloat16,
+    # device_map = "auto",
     # attn_implementation = "flash_attention_2",
     cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
     quantization_config = quantization_config,
 )
+qwen2model.config.use_cache = False
 
 peft_config = LoraConfig(
     task_type = TaskType.CAUSAL_LM,
@@ -48,8 +52,8 @@ print(f"Valid set len: {len(valid_set)}")
 
 args = SFTConfig(
     output_dir = "qwen2-72b",
-    num_train_epochs = 1,
-    per_device_train_batch_size = 4,
+    num_train_epochs = 5,
+    per_device_train_batch_size = 8,
     gradient_accumulation_steps = 8,
     gradient_checkpointing = False,
     optim = "adamw_torch_fused",
@@ -58,12 +62,15 @@ args = SFTConfig(
     learning_rate = 2e-4,
     max_grad_norm = 0.3,
     warmup_ratio = 0.03,
-    bfp16 = True,
-    tf32 = True,
+    bf16 = True,
+    tf32 = False,
+    fp16 = False,
+    use_cpu = False,
     lr_scheduler_type = "constant",
     gradient_checkpointing_kwargs = {"use_reentrant": False},
     dataset_text_field = "",
     dataset_kwargs = {"skip_prepare_dataset": True},
+    dataloader_pin_memory = False,
 )
 
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-VL-7B-Instruct")

@@ -2,6 +2,7 @@ import torch
 import time
 import json
 import numpy as np
+import zss
 
 from utils import Utils
 from data import Data
@@ -15,6 +16,7 @@ from tqdm import tqdm
 from qwen_vl_utils import process_vision_info
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig, AutoModelForCausalLM, AdamW
 from torch.nn import CrossEntropyLoss
+from trl import PPOTrainer, PPOConfig
 
 
 class MyPipeline:
@@ -83,8 +85,9 @@ class MyPipeline:
               optimizer = None, 
               criterion = None, 
               num_epochs: int = 1, 
-              do_generate_json_during_training: bool = False,
-              do_dump_text: bool = False,
+              do_generate_json_during_training: bool = True,
+              do_dump_text: bool = True,
+              seq2seq: bool = False,
               debug: bool = True) -> None:
         
         self.my_utils.delete_past_jsons()
@@ -106,6 +109,33 @@ class MyPipeline:
 
         self.model_qwen2.resize_token_embeddings(len(tokenizer))
         self.model_qwen2half.resize_token_embeddings(len(tokenizer_2), mean_resizing = False)
+
+        ref_model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self.model_variant,
+            torch_dtype = torch.bfloat16,
+            device_map = "auto",
+            cache_dir = self.cache_dir,
+            quantization_config=self.get_custom_config(),
+        )
+        ref_model.eval()
+        for param in ref_model.parameters():
+            param.requires_grad = False
+
+        # trl section
+        ppo_config = PPOConfig(
+            batch_size = 1,
+            learning_rate = 1e-5,
+            output_dir = "/net/storage/pr3/plgrid/plgglemkin/isap/Magisterka-isap"
+        )
+
+        ppo_trainer = PPOTrainer(
+            config = ppo_config,
+            model = self.model_to_train,
+            ref_model = ref_model,
+            tokenizer = tokenizer,
+            reward_model=None,
+            train_dataset=[],
+        )
 
         for epoch in range(1, num_epochs + 1):
             print(f"Starting epoch {epoch}")
@@ -150,19 +180,20 @@ class MyPipeline:
                         ]
                         output_text = self.my_qwen2.processor.batch_decode(
                             generated_ids_trimmed,
-                            skip_special_tokens=True,
-                            clean_up_tokenization_spaces=False
+                            skip_special_tokens = True,
+                            clean_up_tokenization_spaces = False
                         )
 
                         if debug:
-                            print(f"Output text: {output_text}")
+                            print(f"Generated ids: {generated_ids} \n", flush = True)
+                            print(f"Output text: {output_text} \n", flush = True)
 
                         # Process Qwen2.5
                         if do_dump_text:
                             dumped_text = self.my_qwen2half.make_json_from_generated_text(
-                                generated_text=output_text,
-                                subfolder_name=subfolder_name,
-                                json_path=json_ground_path,
+                                generated_text = output_text,
+                                subfolder_name = subfolder_name,
+                                json_path = json_ground_path,
                             )
 
                             # Calculate metrics
@@ -194,7 +225,7 @@ class MyPipeline:
                     
                     if do_generate_json_during_training and do_dump_text:
                         # load dumped json
-                        json_generated = json.load(dumped_text)
+                        json_generated = json.loads(dumped_text)
                         generated_tokens: list[str] = self.my_json.json_to_token_conversion(json_obj = json_generated)
 
                     if debug:
@@ -205,31 +236,57 @@ class MyPipeline:
 
                     max_input_length = inputs.input_ids.shape[1]
 
-                    labels = tokenizer(
-                        truth_tokens,
-                        is_split_into_words = True,
-                        return_tensors = "pt",
-                        max_length = max_input_length,
-                        padding = "max_length",
-                        truncation = True,
-                    ).input_ids.to("cuda")
+                    # calculating TED from both generated and ground truth tokens
+                    json1tree_nodes, _ = self.my_json.create_tree_from_tokens(truth_tokens)
+                    json2tree_nodes, _ = self.my_json.create_tree_from_tokens(generated_tokens)
 
-                    labels[labels == tokenizer.pad_token_id] = -100
+                    calc_dist = zss.simple_distance(
+                        A=json1tree_nodes,
+                        B=json2tree_nodes,
+                        get_children=lambda my_node: my_node.get_children(),
+                        get_label=lambda my_node: my_node.get_label(),
+                        label_dist=lambda label1, label2: 0 if label1 == label2 else 1
+                    )
+                    reward: int = -calc_dist
 
                     if debug:
-                        print(f"Shape inputs: {inputs.input_ids.shape}")
-                        print(f"Shape labels: {labels.shape}")
+                        print(f"TED: {calc_dist} \n", flush = True)
 
-                    outputs = model_train(**inputs)
-                    logits = outputs.logits
+                    query_ids = inputs.input_ids[0].tolist()
+                    response_ids = generated_ids_trimmed[0].tolist()
 
-                    loss = criterion((logits.view(-1, logits.size(-1)), labels.view(-1)))
+                    ppo_trainer.step(
+                        queries = [query_ids],
+                        responses = [response_ids],
+                        rewards = [reward]
+                    )
 
-                    loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad()
+                    if seq2seq:
+                        labels = tokenizer(
+                            truth_tokens,
+                            is_split_into_words = True,
+                            return_tensors = "pt",
+                            max_length = max_input_length,
+                            padding = "max_length",
+                            truncation = True,
+                        ).input_ids.to("cuda")
 
-                    print(f"Loss: {loss.item()}", flush = True)
+                        labels[labels == tokenizer.pad_token_id] = -100
+
+                        if debug:
+                            print(f"Shape inputs: {inputs.input_ids.shape}")
+                            print(f"Shape labels: {labels.shape}")
+
+                        outputs = model_train(**inputs)
+                        logits = outputs.logits
+
+                        loss = criterion((logits.view(-1, logits.size(-1)), labels.view(-1)))
+
+                        loss.backward()
+                        optimizer.step()
+                        optimizer.zero_grad()
+
+                        print(f"Loss: {loss.item()}", flush = True)
 
                     # separate_outputs.append((output_text, subfolder_name))
 

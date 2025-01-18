@@ -24,3 +24,5 @@ job_athena.sh
 *.txt
 .cache
 To_repair/
+wyniki_wykresow/
+qwen2-output/

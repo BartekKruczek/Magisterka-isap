@@ -262,7 +262,8 @@ class Utils(Data):
             for elem in files:
                 counter += 1
 
-        if counter <= 1:
+        # determine how many pages (top) file should have
+        if counter <= 3:
             return True
         else:
             return False

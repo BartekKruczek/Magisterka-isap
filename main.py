@@ -24,7 +24,7 @@ def main():
     # qwen2half = Qwen2Half()
     # custon_metrics = CustomMetrics()
     # mypeft = MyPeft()
-    my_pipeline = MyPipeline()
+    # my_pipeline = MyPipeline()
 
     # data.clear_cache_memory()
 
@@ -33,7 +33,7 @@ def main():
 
     # data.save_histogram_of_pdfs_length()
 
-    years_to_convert: list[int] = [2015]
+    years_to_convert: list[int] = [2016]
     # converting pdf to png
     once_converted = False
     if once_converted:
@@ -215,7 +215,7 @@ def main():
     # mypeft.get_peft_model()
 
     # main pipeline section
-    my_pipeline.train()
+    # my_pipeline.train()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

@@ -10,7 +10,7 @@ from transformers import AutoProcessor
 
 class DataSets:
     def __init__(self, excel_file_path: str = None):
-        self.excel_file_path = "matching_dates_cleaned.xlsx"
+        self.excel_file_path = "matched_dates_cleaned_version2.xlsx"
 
     def __repr__(self) -> str:
         return "DataSets class"
@@ -38,7 +38,7 @@ class DataSets:
     
     def get_dataset(self, debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
         dataset: list[list[dict]] = []
-        max_batch_threshold: int = 5
+        max_batch_threshold: int = 3
 
         # convert to dataframe
         df = dataframe
@@ -78,7 +78,12 @@ class DataSets:
                         },
                     ]
 
-                    dataset.append((message, subfolder_name, json_ground_path))
+                    # dataset.append((message, subfolder_name, json_ground_path))
+                    dataset.append({
+                        "messages": message,
+                        "subfolder_name": subfolder_name,
+                        "json_ground_path": json_ground_path
+                    })
 
                     if debug:
                         print(f"Dataset: {dataset}")
@@ -93,7 +98,7 @@ class DataSets:
         df = self.read_excel()
 
         # split the dataset into training and validation
-        train_df, val_df = train_test_split(df, test_size = 0.2, random_state = 42)
+        train_df, val_df = train_test_split(df, test_size = 0.33, random_state = 42)
 
         # create dataset from the split
         train_dataset = self.get_dataset(dataframe = train_df)
@@ -101,48 +106,45 @@ class DataSets:
 
         return train_dataset, val_dataset
 
-    def collate_fn(self, examples):
-        """
-        examples: lista krotek (message, subfolder_name, json_ground_path)
-        zwracanych przez get_dataset().
-        Zwracamy dict z polami np.:
-        input_ids, attention_mask, pixel_values, labels, itp.
-        """
+    def collate_fn(self, examples, debug: bool = False):
         processor = AutoProcessor.from_pretrained(
             "Qwen/Qwen2-VL-7B-Instruct",
-            cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
-            min_pixels = 512 * 28 * 28,
-            max_pixels = 1024 * 28 * 28,
+            cache_dir="/net/scratch/hscra/plgrid/plgkruczek/.cache",
+            min_pixels = 128 * 28 * 28,
+            max_pixels = 256 * 28 * 28,
         )
 
         merged_texts = []
         image_inputs_list = []
 
-        for (message, subfolder_name, json_ground_path) in examples:
+        for example in examples:
+            message = example["messages"]
+            subfolder_name = example["subfolder_name"]
+            json_ground_path = example["json_ground_path"]
+
             try:
                 with open(json_ground_path, "r", encoding="utf-8") as f:
                     json_str = f.read()
             except:
                 json_str = ""
-                print(f"Error loading json file")
-            
-            # 2) Generujemy prompt (z tokenem [IMAGE] itd.) przez apply_chat_template
+                print(f"Error loading json file: {json_ground_path}", flush = True)
+
+            # Generujemy prompt (z tokenem [IMAGE] itd.) przez apply_chat_template
             prompt_str = processor.apply_chat_template(
                 message,
-                tokenize = False,
-                add_generation_prompt = True
+                tokenize=False,
+                add_generation_prompt=True
             )
 
-            # 3) Sklejamy prompt + docelowe JSON w JEDNĄ sekwencję (teacher forcing)
-            #    Tu można dodać dowolny separator, np. "\n", " Answer: ", itp.
+            # Sklejamy prompt + docelowe JSON w jedną sekwencję (teacher forcing)
             merged_text = prompt_str + "\n" + json_str
             merged_texts.append(merged_text)
 
-            # 4) Wyciągamy obrazy
+            # Wyciągamy obrazy
             image_inputs, _ = process_vision_info(message)
             image_inputs_list.append(image_inputs)
 
-        # 5) Jednorazowo wywołujemy processor na CAŁYM batchu
+        # Jednorazowo wywołujemy processor na CAŁYM batchu
         batch = processor(
             text=merged_texts,
             images=image_inputs_list,
@@ -150,23 +152,20 @@ class DataSets:
             return_tensors="pt",
         )
 
-        # 6) Teacher forcing: labels = input_ids.clone()
+        if debug:
+            print(batch)
+            print(type(batch))
+
+        # Teacher forcing: labels = input_ids.clone()
         labels = batch["input_ids"].clone()
 
-        # 7) Ustawiamy -100 na tokenach, których nie chcemy liczyć w cross-entropy:
-        #    - [PAD]
-        #    - tokeny obrazu (np. 151652, 151653, 151655)
-        #    - ewentualnie prompt (jeśli chcesz go też pominąć)
+        # Ustawiamy -100 na tokenach, których nie chcemy w cross-entropy:
         labels[labels == processor.tokenizer.pad_token_id] = -100
 
-        # Jeśli w Qwen2-VL te ID odpowiadają tokenowi [IMAGE], maskujemy je też:
+        # W Qwen2-VL te ID odpowiadają tokenowi [IMAGE]
         potential_image_token_ids = [151652, 151653, 151655]
         for image_token_id in potential_image_token_ids:
             labels[labels == image_token_id] = -100
-
-        # (opcjonalnie) maskowanie promptu - 
-        #  jeśli prompt jest krótki i zawsze taki sam, możesz heurystycznie
-        #  wykryć jego początkowe tokeny i zamienić na -100.
 
         batch["labels"] = labels
         return batch
