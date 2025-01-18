@@ -2,9 +2,13 @@ import os
 import datetime
 import re
 import pandas as pd
-from DataCollator import DataSets
+import torch
+import matplotlib.pyplot as plt
 
-from transformers import TrainerCallback
+from DataCollator import DataSets
+from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig, EarlyStoppingCallback, TrainerCallback
+from peft import LoraConfig
+from trl import SFTConfig, SFTTrainer
 
 class TrainEvalLossCallback(TrainerCallback):
     def __init__(self):
@@ -41,7 +45,6 @@ class TrainEvalLossCallback(TrainerCallback):
                 print("[on_evaluate] WARN: No 'eval_loss' found in metrics.", flush = True)
 
 def process_years_to_excel(years_to_iterate=[2014, 2015], excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = False):
-        # Zbieranie plików JSON
         base_json_path = "lemkin-json-from-html"
         json_results = []
         for year_val in years_to_iterate:
@@ -150,9 +153,6 @@ print(f"Valid set: {valid_set}", flush = True)
 print(f"Len valid set: {len(valid_set)}", flush = True)
 print(f"Test set: {test_set}", flush = True)
 print(f"Len test set: {len(test_set)}", flush = True)
-
-import torch
-from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig
  
 # Hugging Face model id
 model_id = "Qwen/Qwen2-VL-7B-Instruct" 
@@ -175,8 +175,6 @@ model = AutoModelForVision2Seq.from_pretrained(
 )
 processor = AutoProcessor.from_pretrained(model_id)
 processor.tokenizer.padding_side = 'right'
-
-from peft import LoraConfig
  
 # LoRA config based on QLoRA paper & Sebastian Raschka experiment
 peft_config = LoraConfig(
@@ -187,10 +185,6 @@ peft_config = LoraConfig(
         target_modules=["q_proj", "v_proj"],
         task_type="CAUSAL_LM", 
 )
-
-from trl import SFTConfig
-from transformers import Qwen2VLProcessor
-from qwen_vl_utils import process_vision_info
  
 args = SFTConfig(
     output_dir="qwen2-output", # directory to save and repository id
@@ -214,12 +208,9 @@ args = SFTConfig(
     load_best_model_at_end=True,
 )
 args.remove_unused_columns=False
-
-from trl import SFTTrainer
+args.ddp_find_unused_parameters = False
 
 loss_callback = TrainEvalLossCallback()
-
-from transformers import EarlyStoppingCallback
  
 trainer = SFTTrainer(
     model=model,
@@ -254,8 +245,6 @@ train_folder = os.path.join(subfolder, "train_loss")
 eval_folder = os.path.join(subfolder, "eval_loss")
 os.makedirs(train_folder, exist_ok=True)
 os.makedirs(eval_folder, exist_ok=True)
-
-import matplotlib.pyplot as plt
 
 # Przygotowanie danych do wykresów
 epochs_train = range(1, len(train_losses) + 1)
