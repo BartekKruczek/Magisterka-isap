@@ -140,7 +140,7 @@ df_result = process_years_to_excel([2014, 2015], "matched_dates_cleaned_version2
  
 datacollator = DataSets()
 
-train_set, valid_set = datacollator.split_datasets()
+train_set, valid_set, test_set = datacollator.split_datasets()
 collator = datacollator.collate_fn
 
 # debug datasets
@@ -148,6 +148,8 @@ print(f"Train set: {train_set}", flush = True)
 print(f"Len train set: {len(train_set)}", flush = True)
 print(f"Valid set: {valid_set}", flush = True)
 print(f"Len valid set: {len(valid_set)}", flush = True)
+print(f"Test set: {test_set}", flush = True)
+print(f"Len test set: {len(test_set)}", flush = True)
 
 import torch
 from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig

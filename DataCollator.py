@@ -98,13 +98,17 @@ class DataSets:
         df = self.read_excel()
 
         # split the dataset into training and validation
-        train_df, val_df = train_test_split(df, test_size = 0.33, random_state = 42)
+        train_df, tmp_df = train_test_split(df, test_size = 0.4, random_state = 42)
+
+        # take 50% of the tmp_df for validation and test
+        val_df, test_df = train_test_split(tmp_df, test_size = 0.5, random_state = 42)
 
         # create dataset from the split
         train_dataset = self.get_dataset(dataframe = train_df)
         val_dataset = self.get_dataset(dataframe = val_df)
+        test_df = self.get_dataset(dataframe = test_df)
 
-        return train_dataset, val_dataset
+        return train_dataset, val_dataset, test_df
 
     def collate_fn(self, examples, debug: bool = False):
         processor = AutoProcessor.from_pretrained(
