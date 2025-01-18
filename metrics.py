@@ -1,6 +1,7 @@
 import zss
-import pandas as pd
+import torch
 
+from qwen_vl_utils import process_vision_info
 from json_handler import JsonHandler
 from node_creator import CustomNodeCreator
 
@@ -69,5 +70,85 @@ class CustomMetrics(JsonHandler):
 
         return accuracy
     
-    def calculate_TED_accuracy_on_set(dataset: pd.DataFrame, debug: bool = False) -> float:
-        pass
+    def generate_json_from_model(self, example, model, processor, max_new_tokens=1024, debug=False):
+        # 1. Pobieramy 'messages' z example
+        message = example["messages"]
+        
+        # 2. Budujemy prompt
+        prompt_str = processor.apply_chat_template(
+            message,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        if debug:
+            print("[generate_json_from_model] Prompt:\n", prompt_str)
+
+        # 3. Wyciągamy obrazy (jeśli występują)
+        image_inputs, _ = process_vision_info(message)
+
+        # 4. Przygotowujemy encodings dla modelu
+        inputs = processor(
+            text=[prompt_str],          # batch jednoelementowy
+            images=[image_inputs],
+            return_tensors="pt",
+            padding=True
+        )
+        # przenosimy na urządzenie modelu (załóżmy CUDA)
+        inputs = {k: v.to(model.device) for k, v in inputs.items()}
+
+        # 5. Generujemy predykcję
+        with torch.no_grad():
+            output_ids = model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                num_beams=1,
+                temperature=0.0,
+                eos_token_id=processor.tokenizer.eos_token_id,
+            )
+
+        # 6. Dekodujemy tokeny w string
+        generated_text = processor.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+        if debug:
+            print("[generate_json_from_model] Generated text:\n", generated_text)
+
+        return generated_text
+    
+    def evaluate_ted_accuracy_on_testset(self, test_set, model, processor, custom_metrics, debug=False):
+        """
+        Dla każdego przykładu w test_set:
+        - odczytuje ground-truth JSON (z pliku),
+        - generuje JSON z modelu,
+        - liczy ted_based_accuracy,
+        - zwraca średnią ze wszystkich przykładów.
+        """
+        test_accuracies = []
+
+        for idx, example in enumerate(test_set):
+            # 1) Wczytujemy ground-truth JSON w formie stringu
+            json_gt_path = example["json_ground_path"]
+            try:
+                with open(json_gt_path, "r", encoding="utf-8") as f:
+                    gt_json_str = f.read()
+            except Exception as e:
+                print(f"[WARN] Błąd wczytywania ground-truth: {json_gt_path} | {e}")
+                # Możesz pominąć lub ustawić 0.0, w zależności od potrzeb
+                continue
+
+            # 2) Generujemy JSON z modelu
+            pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
+
+            # 3) Liczymy TED-based Accuracy
+            ted_acc = self.ted_based_accuracy(
+                json_pred_str=pred_json_str, 
+                json_gt_str=gt_json_str,
+                debug=debug
+            )
+            test_accuracies.append(ted_acc)
+
+            if debug:
+                print(f"[evaluate_ted_accuracy_on_testset] idx={idx}, ted_acc={ted_acc:.4f}")
+
+        final_acc = sum(test_accuracies) / len(test_accuracies) if len(test_accuracies) > 0 else 0.0
+        return final_acc

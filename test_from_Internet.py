@@ -9,6 +9,7 @@ from DataCollator import DataSets
 from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig, EarlyStoppingCallback, TrainerCallback
 from peft import LoraConfig
 from trl import SFTConfig, SFTTrainer
+from metrics import CustomMetrics
 
 class TrainEvalLossCallback(TrainerCallback):
     def __init__(self):
@@ -280,3 +281,14 @@ eval_filepath = os.path.join(eval_folder, eval_filename)
 plt.savefig(eval_filepath, dpi=300, bbox_inches='tight')
 plt.close()
 print(f"Wykres strat walidacyjnych zapisano w: {eval_filepath}")
+
+custom_metrics = CustomMetrics()
+print("\nObliczam TED-based Accuracy na zbiorze testowym...")
+final_ted_acc = custom_metrics.evaluate_ted_accuracy_on_testset(
+    test_set=test_set,
+    model=trainer.model,
+    processor=processor,
+    custom_metrics=custom_metrics,
+    debug=True,
+)
+print(f"[TEST] Średni TED-based Accuracy: {final_ted_acc:.4f}")
