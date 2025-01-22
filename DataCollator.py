@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import torch
 
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
@@ -38,7 +39,7 @@ class DataSets:
     
     def get_dataset(self, debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
         dataset: list[list[dict]] = []
-        max_batch_threshold: int = 3
+        max_batch_threshold: int = 2
 
         # convert to dataframe
         df = dataframe
@@ -95,6 +96,9 @@ class DataSets:
         return dataset
     
     def split_datasets(self):
+        if not os.path.exists("test_csv/"):
+            os.makedirs("test_csv/")
+
         df = self.read_excel()
 
         # split the dataset into training and validation
@@ -102,6 +106,7 @@ class DataSets:
 
         # take 50% of the tmp_df for validation and test
         val_df, test_df = train_test_split(tmp_df, test_size = 0.5, random_state = 42)
+        test_df.to_csv("test_csv/test_set.csv", index=False)
 
         # create dataset from the split
         train_dataset = self.get_dataset(dataframe = train_df)
@@ -114,33 +119,39 @@ class DataSets:
         processor = AutoProcessor.from_pretrained(
             "Qwen/Qwen2-VL-7B-Instruct",
             cache_dir="/net/scratch/hscra/plgrid/plgkruczek/.cache",
-            min_pixels = 128 * 28 * 28,
-            max_pixels = 256 * 28 * 28,
+            min_pixels=128*28*28,
+            max_pixels=256*28*28,
         )
+        # processor.to(torch.float16)
 
         merged_texts = []
         image_inputs_list = []
+        prompt_lengths = []  # lista do przechowywania długości promptów
 
         for example in examples:
             message = example["messages"]
-            subfolder_name = example["subfolder_name"]
             json_ground_path = example["json_ground_path"]
 
             try:
                 with open(json_ground_path, "r", encoding="utf-8") as f:
                     json_str = f.read()
-            except:
+            except Exception as e:
                 json_str = ""
-                print(f"Error loading json file: {json_ground_path}", flush = True)
+                print(f"Error loading json file: {json_ground_path}: {e}", flush=True)
 
-            # Generujemy prompt (z tokenem [IMAGE] itd.) przez apply_chat_template
+            # Generujemy prompt
             prompt_str = processor.apply_chat_template(
                 message,
                 tokenize=False,
                 add_generation_prompt=True
             )
 
-            # Sklejamy prompt + docelowe JSON w jedną sekwencję (teacher forcing)
+            # Obliczamy długość tokenów promptu
+            prompt_tokens = processor.tokenizer(prompt_str, return_tensors="pt")
+            prompt_length = prompt_tokens.input_ids.size(1)
+            prompt_lengths.append(prompt_length)
+
+            # Łączymy prompt z ground truth JSON-em
             merged_text = prompt_str + "\n" + json_str
             merged_texts.append(merged_text)
 
@@ -148,7 +159,7 @@ class DataSets:
             image_inputs, _ = process_vision_info(message)
             image_inputs_list.append(image_inputs)
 
-        # Jednorazowo wywołujemy processor na CAŁYM batchu
+        # Tworzymy batch
         batch = processor(
             text=merged_texts,
             images=image_inputs_list,
@@ -159,17 +170,33 @@ class DataSets:
         if debug:
             print(batch)
             print(type(batch))
+            for key, value in batch.items():
+                print(f"Key: {key}, Type: {type(value)}, Tensor dtype: {value.dtype}, Shape: {value.shape}")
 
-        # Teacher forcing: labels = input_ids.clone()
+        for key in batch:
+            if key == 'pixel_values': 
+                batch[key] = batch[key].to(torch.float16)
+
+        # Tworzymy etykiety
         labels = batch["input_ids"].clone()
-
-        # Ustawiamy -100 na tokenach, których nie chcemy w cross-entropy:
         labels[labels == processor.tokenizer.pad_token_id] = -100
-
-        # W Qwen2-VL te ID odpowiadają tokenowi [IMAGE]
         potential_image_token_ids = [151652, 151653, 151655]
         for image_token_id in potential_image_token_ids:
             labels[labels == image_token_id] = -100
 
+        # Maskujemy tokeny odpowiadające promptowi dla każdego przykładu
+        for i, prompt_len in enumerate(prompt_lengths):
+            # Upewniamy się, że prompt_len nie przekracza długości sekwencji
+            seq_len = labels.size(1)
+            if prompt_len < seq_len:
+                labels[i, :prompt_len] = -100
+            else:
+                labels[i, :] = -100
+
         batch["labels"] = labels
+
+        if debug:
+            for key, value in batch.items():
+                print(f"Key: {key}, Type: {type(value)}, Tensor dtype: {value.dtype}, Shape: {value.shape}")
+
         return batch
