@@ -122,11 +122,10 @@ class DataSets:
             min_pixels=128*28*28,
             max_pixels=256*28*28,
         )
-        # processor.to(torch.float16)
 
         merged_texts = []
         image_inputs_list = []
-        prompt_lengths = []  # lista do przechowywania długości promptów
+        prompt_lengths = []
 
         for example in examples:
             message = example["messages"]
@@ -139,27 +138,22 @@ class DataSets:
                 json_str = ""
                 print(f"Error loading json file: {json_ground_path}: {e}", flush=True)
 
-            # Generujemy prompt
             prompt_str = processor.apply_chat_template(
                 message,
                 tokenize=False,
                 add_generation_prompt=True
             )
 
-            # Obliczamy długość tokenów promptu
             prompt_tokens = processor.tokenizer(prompt_str, return_tensors="pt")
             prompt_length = prompt_tokens.input_ids.size(1)
             prompt_lengths.append(prompt_length)
 
-            # Łączymy prompt z ground truth JSON-em
             merged_text = prompt_str + "\n" + json_str
             merged_texts.append(merged_text)
 
-            # Wyciągamy obrazy
             image_inputs, _ = process_vision_info(message)
             image_inputs_list.append(image_inputs)
 
-        # Tworzymy batch
         batch = processor(
             text=merged_texts,
             images=image_inputs_list,
@@ -177,16 +171,13 @@ class DataSets:
             if key == 'pixel_values': 
                 batch[key] = batch[key].to(torch.float16)
 
-        # Tworzymy etykiety
         labels = batch["input_ids"].clone()
         labels[labels == processor.tokenizer.pad_token_id] = -100
         potential_image_token_ids = [151652, 151653, 151655]
         for image_token_id in potential_image_token_ids:
             labels[labels == image_token_id] = -100
 
-        # Maskujemy tokeny odpowiadające promptowi dla każdego przykładu
         for i, prompt_len in enumerate(prompt_lengths):
-            # Upewniamy się, że prompt_len nie przekracza długości sekwencji
             seq_len = labels.size(1)
             if prompt_len < seq_len:
                 labels[i, :prompt_len] = -100
