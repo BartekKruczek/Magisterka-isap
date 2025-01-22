@@ -161,6 +161,12 @@ class DataSets:
             return_tensors="pt",
         )
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        for key, value in batch.items():
+            if isinstance(value, torch.Tensor):
+                batch[key] = value.to(device)
+
         if debug:
             print(batch)
             print(type(batch))
