@@ -1,57 +1,55 @@
 import json
 import zss
 
-class JsonTree:
-    def __init__(self, data, label=''):
-        self.label = label
-        self.children = []
+from json_handler import JsonHandler
 
-        if isinstance(data, dict):
-            # Dla obiektów JSON (słowników), etykietą jest klucz, a wartość to poddrzewo
-            for key, value in data.items():
-                child = JsonTree(value, label=str(key))
-                self.children.append(child)
-        elif isinstance(data, list):
-            # Dla list, etykietą może być indeks lub ogólna etykieta
-            for idx, item in enumerate(data):
-                child = JsonTree(item, label=str(idx))
-                self.children.append(child)
-        else:
-            # Dla węzłów liści (wartości), etykietą jest sama wartość
-            self.label = str(data)
+my_json_handler = JsonHandler()
 
-    def get_children(self):
-        return self.children
+json_path1 = "lemkin-json-from-html/1918/1918_2.json"
+json_path2 = "lemkin-json-from-html/1918/1918_17.json"
 
-    def get_label(self):
-        return self.label
+string1: str = ""
+with open(json_path1, 'r', encoding = 'utf-8') as file1:
+    string1: str = file1.read()
 
-def compute_ted(json_obj1, json_obj2):
-    """
-    Oblicza Odległość Edycyjną Drzewa między dwoma obiektami JSON.
+json1: dict = json.loads(string1)
 
-    :param json_obj1: Pierwszy obiekt JSON (parsowany do struktur Pythona)
-    :param json_obj2: Drugi obiekt JSON (parsowany do struktur Pythona)
-    :return: Odległość Edycyjna Drzewa (liczba całkowita)
-    """
-    tree1 = JsonTree(json_obj1)
-    tree2 = JsonTree(json_obj2)
-    distance = zss.simple_distance(
-        tree1,
-        tree2,
-        get_children=lambda node: node.get_children(),
-        get_label=lambda node: node.get_label(),
-        label_dist=lambda label1, label2: 0 if label1 == label2 else 1
-    )
-    return distance
+string2: str = ""
+with open(json_path2, 'r', encoding = 'utf-8') as file2:
+    string2: str = file2.read()
 
-# Przykładowe użycie
-if __name__ == "__main__":
-    json_str1 = '{"id": 1, "name": "Test", "data": {"value": 10}}'
-    json_str2 = '{"id": 1, "name": "Test"}'
+json2: dict = json.loads(string2)
 
-    json_obj1 = json.loads(json_str1)
-    json_obj2 = json.loads(json_str2)
+json1token = my_json_handler.json_to_token_conversion(json_obj = json1, keys_only = True)
+json2token = my_json_handler.json_to_token_conversion(json_obj = json2, keys_only = True)
 
-    ted_distance = compute_ted(json_obj1, json_obj2)
-    print(f"Odległość Edycyjna Drzewa: {ted_distance}")
+print(json1token)
+print(json2token)
+
+# tree from tokens
+json1tree_nodes, _ = my_json_handler.create_tree_from_tokens(json1token)
+json2tree_nodes, _ = my_json_handler.create_tree_from_tokens(json2token)
+
+calc_dist = zss.simple_distance(
+    A=json1tree_nodes,
+    B=json2tree_nodes,
+    get_children=lambda my_node: my_node.get_children(),
+    get_label=lambda my_node: my_node.get_label(),
+    label_dist=lambda label1, label2: 0 if label1 == label2 else 1
+)
+
+# Tworzenie drzewa bezpośrednio z obiektów JSON (bez tokenów)
+json1tree_no_tokens = my_json_handler.create_tree_from_json_string(json=json1)
+json2tree_no_tokens = my_json_handler.create_tree_from_json_string(json=json2)
+
+# Obliczanie TED bez pośrednictwa tokenów
+calc_dist_no_tokens = zss.simple_distance(
+    A=json1tree_no_tokens,
+    B=json2tree_no_tokens,
+    get_children=lambda my_node: my_node.get_children(),
+    get_label=lambda my_node: my_node.get_label(),
+    label_dist=lambda label1, label2: 0 if label1 == label2 else 1
+)
+
+print("TED (bezpośrednio z JSON):", calc_dist_no_tokens)
+print("TED:", calc_dist)

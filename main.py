@@ -9,6 +9,7 @@ from qwen2 import Qwen2
 from qwen2half import Qwen2Half 
 from metrics import CustomMetrics
 from peft_lora import MyPeft
+from pipeline import MyPipeline
 
 def main():
     warnings.filterwarnings("ignore")
@@ -19,19 +20,22 @@ def main():
 
     data = Data(json_path='lemkin-json-from-html', pdf_path=  'lemkin-pdf')
     utils = Utils(json_path='lemkin-json-from-html', pdf_path = 'lemkin-pdf')
-    qwen2 = Qwen2()
-    qwen2half = Qwen2Half()
+    # qwen2 = Qwen2()
+    # qwen2half = Qwen2Half()
     # custon_metrics = CustomMetrics()
     # mypeft = MyPeft()
+    # my_pipeline = MyPipeline()
+
+    # data.clear_cache_memory()
 
     # how many files are there in both directories
     # print("Detected {} .json and {} .pdf files".format(data.number_of_files()[0], data.number_of_files()[1]))
 
     # data.save_histogram_of_pdfs_length()
 
-    years_to_convert: list[int] = [2015]
+    years_to_convert: list[int] = [2021]
     # converting pdf to png
-    once_converted = False
+    once_converted = True
     if once_converted:
         for i in years_to_convert:
             for pdf_path in data.yield_pdf_files(year = i):
@@ -197,8 +201,8 @@ def main():
     # data.create_new_xlsx()
 
     # json section
-    qwen2.save_json()
-    qwen2half.save_combined_json()
+    # qwen2.save_json()
+    # qwen2half.save_combined_json()
 
     # metrics section
     # dist: int = custon_metrics.calculate_tree_edit_distance(
@@ -209,6 +213,9 @@ def main():
 
     # peft section
     # mypeft.get_peft_model()
+
+    # main pipeline section
+    # my_pipeline.train()
 
     end_time = time.time()
     elapsed_time = (end_time - start_time) / 60

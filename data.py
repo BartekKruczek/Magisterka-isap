@@ -454,7 +454,7 @@ class Data():
             f.write(f"{text}<SEP>{error}")
 
     def clear_cache_memory(self):
-        path: str = "/net/tscratch/people/plgkruczek/.cache"
+        path: str = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
 
         try:
             shutil.rmtree(path = path)

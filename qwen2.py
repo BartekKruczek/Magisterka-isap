@@ -13,7 +13,7 @@ from tqdm import tqdm
 from utils import Utils
 from qwen2half import Qwen2Half
 class Qwen2(Data, Qwen2Half):
-    def __init__(self) -> None:
+    def __init__(self, model = None) -> None:
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.xlsx_path = "matching_dates_cleaned.xlsx"
@@ -24,7 +24,8 @@ class Qwen2(Data, Qwen2Half):
         elif self.device.type == "mps" or self.device.type == "cpu":
             self.cache_dir = "/Users/bk/Documents/Zajęcia (luty - czerwiec 2024)/Pracownia-problemowa/.cache"
 
-        self.model = self.get_model()
+        self.model = model if model is not None else self.get_model()
+        # self.model = model
         self.processor = self.get_processor()
 
     def __repr__(self) -> str:
@@ -34,7 +35,7 @@ class Qwen2(Data, Qwen2Half):
         # custom quantization method
         quantization_config = BitsAndBytesConfig(
             load_in_4bit = True,
-            llm_int8_enable_fp32_cpu_offload = False
+            llm_int8_enable_fp32_cpu_offload = True
         )
 
         return quantization_config
@@ -79,8 +80,8 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
         elif self.device.type == "cuda" and memory_save:
-            min_pixels = 128 * 28 * 28
-            max_pixels = 128 * 28 * 28
+            min_pixels = 512 * 28 * 28
+            max_pixels = 1024 * 28 * 28
             processor = AutoProcessor.from_pretrained(
                 self.model_variant,
                 cache_dir = self.cache_dir, 
@@ -97,7 +98,7 @@ class Qwen2(Data, Qwen2Half):
 
             return processor
 
-    def get_dataset(self) -> list[list[dict]]:
+    def get_dataset(self, debug: bool = False) -> list[list[dict]]:
         dataset: list[list[dict]] = []
         max_batch_threshold: int = 5
 
@@ -106,8 +107,9 @@ class Qwen2(Data, Qwen2Half):
         dataframe = pd.DataFrame(df)
 
         # iterate over .xlsx for JSON and image folder paths
-        for index, row in tqdm(dataframe.iterrows(), total = df.shape[0], desc = "Generowanie datasetu"):
+        for _, row in tqdm(dataframe.iterrows(), total = df.shape[0], desc = "Generowanie datasetu"):
             images_folder_path: str = row["Image folder path"]
+            json_ground_path: str = row["JSON file path"]
 
             # check if document is less than 10 pages, else skipp
             if Utils.check_length_of_simple_file(image_folder_path = images_folder_path):
@@ -138,12 +140,12 @@ class Qwen2(Data, Qwen2Half):
                         },
                     ]
 
-                    dataset.append((message, subfolder_name))
+                    dataset.append((message, subfolder_name, json_ground_path))
 
-                    # debug
-                    # print(f"Dataset: {dataset}")
-                    print(type(dataset))
-                    print(len(dataset))
+                    if debug:
+                        print(f"Dataset: {dataset}")
+                        print(type(dataset))
+                        print(len(dataset))
             else:
                 continue
 
@@ -152,7 +154,7 @@ class Qwen2(Data, Qwen2Half):
     def get_input_and_output(self, data: list[tuple[list[dict], str]]) -> list[tuple[str, str]]:
         separate_outputs: list[tuple[str, str]] = []
 
-        for elem, subfolder_name in tqdm(data, desc = "Przetwarzanie danych"):
+        for elem, subfolder_name, _ in tqdm(data, desc = "Przetwarzanie danych"):
             text = self.processor.apply_chat_template(
                 elem, tokenize=False, add_generation_prompt=True
             )
@@ -166,7 +168,7 @@ class Qwen2(Data, Qwen2Half):
             )
             inputs = inputs.to("cuda")
 
-            generated_ids = self.model.generate(**inputs, max_new_tokens = 4096)
+            generated_ids = self.model.generate(**inputs, max_new_tokens = 32768)
             generated_ids_trimmed = [
                 out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
             ]
@@ -185,11 +187,22 @@ class Qwen2(Data, Qwen2Half):
 
     def save_json(self) -> None:
         Utils.delete_past_jsons()
-
+        max_iter: int = 5
         generated_jsons = self.get_input_and_output(self.get_dataset())
-        
-        for i, (output_text, subfolder_name) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
-            try:
-                self.json_dump(context=output_text, idx=i, subfolder=subfolder_name)
-            except Exception as e:
-                print(f"Error occurred in {self.save_json.__name__}, error: {e}")
+
+        for i, (output_text, subfolder_name, json_path) in enumerate(tqdm(generated_jsons, desc = "Zapisywanie plików JSON")):
+            for i in range(1, max_iter + 1):
+                try:
+                    self.json_dump(context = output_text, idx = i, subfolder = subfolder_name)
+                    print(f"Json saved successfully!")
+                    break
+                except Exception as e:
+                    print(f"Error occurred in {self.save_json.__name__}, error: {e}")
+
+                    if i <= max_iter:
+                        repaired_message: str = self.auto_repair_json(error_message = str(e), broken_json = output_text)
+
+                        try:
+                            self.json_dump(context = repaired_message, subfolder = subfolder_name)
+                        except Exception as e:
+                            print(f"Error occurred in {self.save_json.__name__}, error: {e}")
