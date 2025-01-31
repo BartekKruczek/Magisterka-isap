@@ -37,12 +37,10 @@ datacollator = DataSets(excel_file_path="matched_dates_cleaned_version2.xlsx")
 test_set = datacollator.get_dataset(debug=False, dataframe=test_df)
 
 custom_metrics = CustomMetrics()
-final_ted_acc = custom_metrics.evaluate_ted_accuracy_on_testset(
+percentage_artefacts: float = custom_metrics.evaluate_on_testset(
     test_set=test_set,
     model=merged_model,
     processor=processor,
-    custom_metrics=custom_metrics,
-    debug=True,
 )
 
-print(f"[TEST] Średni TED-based Accuracy: {final_ted_acc:.4f}")
+print(f"Percentage of all artefacts detected: {percentage_artefacts}")

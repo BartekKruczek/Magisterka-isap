@@ -1,5 +1,6 @@
 import zss
 import torch
+import regex as re
 
 from qwen_vl_utils import process_vision_info
 from json_handler import JsonHandler
@@ -67,7 +68,15 @@ class CustomMetrics(JsonHandler):
 
         return accuracy
     
-    def generate_json_from_model(self, example, model, processor, max_new_tokens=4096, debug=False):
+    def generate_json_from_model(
+            self, 
+            example, 
+            model, 
+            processor, 
+            max_new_tokens=8192, 
+            debug: bool = False,
+            do_clean: bool = False
+            ):
         message = example["messages"]
         
         prompt_str = processor.apply_chat_template(
@@ -103,23 +112,43 @@ class CustomMetrics(JsonHandler):
         if debug:
             print("[generate_json_from_model] Wygenerowany tekst przed czyszczeniem:\n", generated_text)
 
-        start = generated_text.find('{')
-        end = generated_text.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            cleaned_json_str = generated_text[start:end+1]
+        if do_clean:
+            start = generated_text.find('{')
+            end = generated_text.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                cleaned_json_str = generated_text[start:end+1]
+            else:
+                cleaned_json_str = generated_text
+                print("Nie udało się wyodrębnić czystego JSON-a.")
+
+            if debug:
+                print("[generate_json_from_model] Oczyszczony JSON:\n", cleaned_json_str)
+
+            return cleaned_json_str
         else:
-            cleaned_json_str = generated_text
-            print("Nie udało się wyodrębnić czystego JSON-a.")
-
-        if debug:
-            print("[generate_json_from_model] Oczyszczony JSON:\n", cleaned_json_str)
-
-        return cleaned_json_str
+            return generated_text
     
-    def evaluate_ted_accuracy_on_testset(self, test_set, model, processor, custom_metrics, debug=False):
-        test_accuracies = []
+    def check_if_any_artefacts(self, s: str) -> bool:
+        """
+        Take generated formula, check if there is any character before the first "{" or after the last "}",
+        return if so
+        """
+        match_before = re.search(r'^(.*?){', s)
+        match_after = re.search(r'}(.*?)$', s)
 
-        for idx, example in enumerate(test_set):
+        return bool((match_before and match_before.group(1)) or (match_after and match_after.group(1)))
+    
+    def evaluate_on_testset(
+            self, 
+            test_set,
+            model, 
+            processor, 
+            ) -> float:
+        
+        test_artefact_percentage: int = 0
+        num_all_examples: int = 0
+
+        for _, example in enumerate(test_set):
             json_gt_path = example["json_ground_path"]
             try:
                 with open(json_gt_path, "r", encoding="utf-8") as f:
@@ -128,16 +157,14 @@ class CustomMetrics(JsonHandler):
                 print(f"[WARN] Błąd wczytywania ground-truth: {json_gt_path} | {e}")
                 continue
 
-            pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
+            pred_json_str = self.generate_json_from_model(example, model, processor)
 
-            ted_acc = self.ted_based_accuracy(
-                json_pred_str=pred_json_str, 
-                json_gt_str=gt_json_str,
-                debug=debug
-            )
-            test_accuracies.append(ted_acc)
+            if self.check_if_any_artefacts(s = pred_json_str):
+                test_artefact_percentage += 1
+            else:
+                continue
 
-            print(f"[evaluate_ted_accuracy_on_testset] idx={idx}, ted_acc={ted_acc:.4f}")
+            num_all_examples += 1
 
-        final_acc = sum(test_accuracies) / len(test_accuracies) if len(test_accuracies) > 0 else 0.0
-        return final_acc
+        final_percentage: float = round((test_artefact_percentage / num_all_examples) * 100, 2)
+        return final_percentage
