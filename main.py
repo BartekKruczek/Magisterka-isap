@@ -33,9 +33,9 @@ def main():
 
     # data.save_histogram_of_pdfs_length()
 
-    years_to_convert: list[int] = [2016]
+    years_to_convert: list[int] = [2021]
     # converting pdf to png
-    once_converted = False
+    once_converted = True
     if once_converted:
         for i in years_to_convert:
             for pdf_path in data.yield_pdf_files(year = i):

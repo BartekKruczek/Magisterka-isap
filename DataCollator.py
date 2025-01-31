@@ -10,8 +10,9 @@ from qwen_vl_utils import process_vision_info
 from transformers import AutoProcessor
 
 class DataSets:
-    def __init__(self, excel_file_path: str = None):
+    def __init__(self, excel_file_path: str = None, model: str = None):
         self.excel_file_path = "matched_dates_cleaned_version2.xlsx"
+        self.model = model
 
     def __repr__(self) -> str:
         return "DataSets class"
@@ -117,7 +118,7 @@ class DataSets:
 
     def collate_fn(self, examples, debug: bool = False):
         processor = AutoProcessor.from_pretrained(
-            "Qwen/Qwen2-VL-7B-Instruct",
+            "Qwen/Qwen2-VL-2B-Instruct",
             cache_dir="/net/scratch/hscra/plgrid/plgkruczek/.cache",
             min_pixels=128*28*28,
             max_pixels=256*28*28,
@@ -159,13 +160,11 @@ class DataSets:
             images=image_inputs_list,
             padding=True,
             return_tensors="pt",
-        )
+        ).to("cuda")
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        for key, value in batch.items():
-            if isinstance(value, torch.Tensor):
-                batch[key] = value.to(device)
+        # for key, value in batch.items():
+        #     if isinstance(value, torch.Tensor):
+        #         batch[key] = value.to(self.model.device)
 
         if debug:
             print(batch)

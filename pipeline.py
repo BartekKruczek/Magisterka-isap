@@ -84,7 +84,7 @@ class MyPipeline:
               model = None, 
               optimizer = None, 
               criterion = None, 
-              num_epochs: int = 1, 
+              num_epochs: int = 5, 
               do_generate_json_during_training: bool = True,
               do_dump_text: bool = True,
               seq2seq: bool = False,
