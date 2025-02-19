@@ -1,73 +1,15 @@
-import zss
+import json
 import torch
 import regex as re
+from tqdm import tqdm  # <-- dodanie importu tqdm
 
 from qwen_vl_utils import process_vision_info
 from json_handler import JsonHandler
-from node_creator import CustomNodeCreator
 
 class CustomMetrics(JsonHandler):
     def __init__(self) -> None:
         super().__init__()
 
-    def calculate_tree_edit_distance(self, json_generated: str = None, json_test: str = None, debug: bool = True) -> int:
-        # json_generated: str = json_generated
-        # json_test: str = self.json_load_TED(json_file2_path = json_test_path)
-
-        if json_generated is None or json_test is None:
-            print(f'Error loading json files in {self.calculate_tree_edit_distance.__name__}')
-            return None
-
-        # debug
-        if debug:
-            print(f'Json 1 as dictionary: {str(json_generated)} \n')
-            print(f'Json 2 as dictionary: {str(json_test)} \n')
-
-        # creating tree section
-        tree1 = self.create_tree_from_json_string(json = json_generated)
-        tree2 = self.create_tree_from_json_string(json = json_test)
-
-        # distance section
-        calc_dist: int = zss.simple_distance(
-            A = tree1,
-            B = tree2,
-            get_children = lambda my_node: my_node.get_children(),
-            get_label = lambda my_node: my_node.get_label(),
-            label_dist = lambda label1, label2: 0 if label1 == label2 else 1
-        )
-
-        return calc_dist
-    
-    def count_nodes_in_tree(self, node: CustomNodeCreator) -> int:
-        if not node:
-            return 0
-        total = 1
-        for child in node.get_children():
-            total += self.count_nodes_in_tree(child)
-        return total
-    
-    def ted_based_accuracy(self, json_pred_str: str, json_gt_str: str, debug: bool = False) -> float:
-        ted_distance = self.calculate_tree_edit_distance(json_pred_str, json_gt_str, debug = debug)
-        if ted_distance is None:
-            print(f"Error calculating TED in {self.ted_based_accuracy.__name__}, returning 0.0")
-            return 0.0
-
-        # maxTED section
-        tree_gt = self.create_tree_from_json_string(json_gt_str)
-        max_ted = self.count_nodes_in_tree(tree_gt)
-
-        if max_ted == 0:
-            # edge case: ground-truth is empty
-            return 1.0 if ted_distance == 0 else 0.0
-
-        accuracy = 1.0 - (ted_distance / max_ted)
-        accuracy = max(0.0, accuracy)
-
-        if debug:
-            print(f"[ted_based_accuracy] TED = {ted_distance}, maxTED = {max_ted}, final_acc = {accuracy:.4f}")
-
-        return accuracy
-    
     def generate_json_from_model(
             self, 
             example, 
@@ -75,8 +17,11 @@ class CustomMetrics(JsonHandler):
             processor, 
             max_new_tokens=8192, 
             debug: bool = False,
-            do_clean: bool = False
-            ):
+        ):
+        """
+        Generuje tekstową odpowiedź modelu (zwykle JSON), bazując na wejściu (example).
+        Zwraca surowy ciąg tekstowy wygenerowany przez model.
+        """
         message = example["messages"]
         
         prompt_str = processor.apply_chat_template(
@@ -100,71 +45,94 @@ class CustomMetrics(JsonHandler):
 
         output_ids = model.generate(
             **inputs,
-            max_new_tokens = max_new_tokens,
-            do_sample = True,
-            num_beams = 1,
-            temperature = 0.01,
-            eos_token_id = processor.tokenizer.eos_token_id,
+            max_new_tokens=max_new_tokens,
+            do_sample=True,
+            num_beams=1,
+            temperature=0.01,
+            eos_token_id=processor.tokenizer.eos_token_id,
         )
 
         generated_text = processor.tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
         if debug:
-            print("[generate_json_from_model] Wygenerowany tekst przed czyszczeniem:\n", generated_text)
+            print("[generate_json_from_model] Wygenerowany tekst:\n", generated_text)
 
-        if do_clean:
-            start = generated_text.find('{')
-            end = generated_text.rfind('}')
-            if start != -1 and end != -1 and end > start:
-                cleaned_json_str = generated_text[start:end+1]
-            else:
-                cleaned_json_str = generated_text
-                print("Nie udało się wyodrębnić czystego JSON-a.")
-
-            if debug:
-                print("[generate_json_from_model] Oczyszczony JSON:\n", cleaned_json_str)
-
-            return cleaned_json_str
-        else:
-            return generated_text
+        return generated_text
     
     def check_if_any_artefacts(self, s: str) -> bool:
         """
-        Take generated formula, check if there is any character before the first "{" or after the last "}",
-        return if so
+        Sprawdza, czy w przekazanym ciągu s występują jakiekolwiek znaki 
+        przed pierwszym '{' lub po ostatnim '}'.
+        Zwraca True, jeśli artefakty istnieją, w przeciwnym razie False.
         """
-        match_before = re.search(r'^(.*?){', s)
-        match_after = re.search(r'}(.*?)$', s)
+        match_before = re.search(r'^(.*?){', s, flags=re.DOTALL)
+        match_after = re.search(r'}(.*?)$', s, flags=re.DOTALL)
 
-        return bool((match_before and match_before.group(1)) or (match_after and match_after.group(1)))
+        # Jeśli cokolwiek występuje w group(1) przed '{' lub po '}', mamy artefakty
+        has_before = bool(match_before and match_before.group(1).strip())
+        has_after = bool(match_after and match_after.group(1).strip())
+
+        return has_before or has_after
     
+    def extract_clean_json(self, s: str) -> str:
+        """
+        Zwraca wycinek ciągu s od pierwszego '{' do ostatniego '}' włącznie.
+        Jeśli się nie powiedzie, zwraca cały ciąg.
+        """
+        start_idx = s.find('{')
+        end_idx = s.rfind('}')
+        if start_idx == -1 or end_idx == -1 or end_idx < start_idx:
+            return s  # nie udało się poprawnie wyekstrahować
+        return s[start_idx:end_idx+1]
+
+    def is_json_loadable(self, s: str) -> bool:
+        """
+        Sprawdza, czy dany ciąg (s) da się wczytać jako poprawny JSON.
+        """
+        try:
+            json.loads(s)
+            return True
+        except json.JSONDecodeError:
+            return False
+
     def evaluate_on_testset(
             self, 
             test_set,
             model, 
-            processor, 
-            ) -> float:
-        
-        test_artefact_percentage: int = 0
-        num_all_examples: int = 0
+            processor,
+    ) -> tuple:
+        """
+        Zwraca krotkę (artefact_percentage, valid_after_clean_percentage).
 
-        for _, example in enumerate(test_set):
-            json_gt_path = example["json_ground_path"]
-            try:
-                with open(json_gt_path, "r", encoding="utf-8") as f:
-                    gt_json_str = f.read()
-            except Exception as e:
-                print(f"[WARN] Błąd wczytywania ground-truth: {json_gt_path} | {e}")
-                continue
+        artefact_percentage       -> % przykładów, które posiadały artefakty 
+                                     (znaki przed pierwszym '{' lub po ostatnim '}')
+        valid_after_clean_percentage -> % przykładów, które po wycięciu fragmentu 
+                                        od '{' do '}' dają się zdeserializować (json.loads).
+        """
+        count_artefacts = 0
+        count_valid_after_clean = 0
+        num_examples = len(test_set)
 
+        if num_examples == 0:
+            print("[evaluate_on_testset] Brak przykładów w test_secie.")
+            return 0.0, 0.0
+
+        # Dodanie paska postępu
+        for example in tqdm(test_set, desc="Evaluating", total=num_examples):
             pred_json_str = self.generate_json_from_model(example, model, processor)
 
-            if self.check_if_any_artefacts(s = pred_json_str):
-                test_artefact_percentage += 1
-            else:
-                continue
+            # 1. Sprawdzamy artefakty
+            if self.check_if_any_artefacts(pred_json_str):
+                count_artefacts += 1
 
-            num_all_examples += 1
+            # 2. Wyczyszczony ciąg
+            cleaned_str = self.extract_clean_json(pred_json_str)
 
-        final_percentage: float = round((test_artefact_percentage / num_all_examples) * 100, 2)
-        return final_percentage
+            # 3. Sprawdzamy, czy można go wczytać jako poprawny JSON
+            if self.is_json_loadable(cleaned_str):
+                count_valid_after_clean += 1
+
+        artefact_percentage = round((count_artefacts / num_examples) * 100, 2)
+        valid_after_clean_percentage = round((count_valid_after_clean / num_examples) * 100, 2)
+
+        return artefact_percentage, valid_after_clean_percentage

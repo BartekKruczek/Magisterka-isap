@@ -8,7 +8,7 @@ from metrics import CustomMetrics
 from DataCollator import DataSets
 
 base_model_id = "Qwen/Qwen2-VL-7B-Instruct"
-checkpoint_folder = "qwen2-output/checkpoint-90"
+checkpoint_folder = "qwen2-output/checkpoint-588"
 cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
 
 base_model = AutoModelForVision2Seq.from_pretrained(
