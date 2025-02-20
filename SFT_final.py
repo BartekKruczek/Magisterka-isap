@@ -7,11 +7,9 @@ import matplotlib.pyplot as plt
 import time
 
 from DataCollator import DataSets
-from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig, EarlyStoppingCallback, TrainerCallback
+from transformers import AutoModelForVision2Seq, AutoProcessor, BitsAndBytesConfig, EarlyStoppingCallback, TrainerCallback, Qwen2VLForConditionalGeneration
 from peft import LoraConfig
 from trl import SFTConfig, SFTTrainer
-from metrics import CustomMetrics
-from json_handler import JsonHandler
 from qwen_vl_utils import process_vision_info
 from tqdm import tqdm
 from utils import Utils
@@ -60,7 +58,7 @@ class TrainEvalLossCallback(TrainerCallback):
             else:
                 print("[on_evaluate] WARN: No 'eval_loss' found in metrics.", flush = True)
 
-def process_years_to_excel(years_to_iterate=[2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021], excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = True):
+def process_years_to_excel(years_to_iterate, excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = True):
         base_json_path = "lemkin-json-from-html"
         json_results = []
         for year_val in years_to_iterate:
@@ -254,7 +252,7 @@ def split_datasets():
 
     return train_dataset, val_dataset, test_df
 
-df_result = process_years_to_excel([2014], "matched_dates_cleaned_version2.xlsx")
+df_result = process_years_to_excel([2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021], "matched_dates_cleaned_version2.xlsx")
 
 model_id = "Qwen/Qwen2-VL-7B-Instruct"
 # model_id = "Qwen/Qwen2-VL-7B-Instruct-AWQ" 
@@ -266,7 +264,7 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_quant_type="nf4",
 )
 
-model = AutoModelForVision2Seq.from_pretrained(
+model = Qwen2VLForConditionalGeneration.from_pretrained(
     model_id,
     device_map = "auto",
     # quantization_config=bnb_config,
@@ -378,7 +376,7 @@ peft_config = LoraConfig(
 args = SFTConfig(
     output_dir = f"Checkpoints/{model_id}_{mytime}",
     num_train_epochs = 15,
-    per_device_train_batch_size = 4,
+    per_device_train_batch_size = 1,
     gradient_accumulation_steps = 8,
     gradient_checkpointing = False,
     optim = "adamw_torch_fused",
