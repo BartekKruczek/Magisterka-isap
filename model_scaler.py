@@ -1,9 +1,9 @@
-import os
 import torch
 import pandas as pd
 
 from peft import PeftModel
 from transformers import AutoModelForVision2Seq, AutoProcessor
+
 from metrics import CustomMetrics
 from DataCollator import DataSets
 
@@ -37,10 +37,14 @@ datacollator = DataSets(excel_file_path="matched_dates_cleaned_version2.xlsx")
 test_set = datacollator.get_dataset(debug=False, dataframe=test_df)
 
 custom_metrics = CustomMetrics()
-percentage_artefacts: float = custom_metrics.evaluate_on_testset(
-    test_set=test_set,
-    model=merged_model,
-    processor=processor,
+artefact_pct, valid_pct, avg_lev_dist = custom_metrics.evaluate_on_testset(
+    test_set,
+    merged_model, 
+    processor,
+    do_auto_fix=False,
+    debug=False,
 )
 
-print(f"Percentage of all artefacts detected: {percentage_artefacts}")
+print(f"Percentage of all artefacts detected: {artefact_pct}")
+print(f"Valid json files after cleaning: {valid_pct}")
+print(f"Average lev dist: {avg_lev_dist}")

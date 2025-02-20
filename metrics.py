@@ -3,6 +3,7 @@ import torch
 import regex as re
 
 from tqdm import tqdm
+from typing import Dict
 from qwen_vl_utils import process_vision_info
 from Levenshtein import distance
 
@@ -11,6 +12,18 @@ from json_handler import JsonHandler
 class CustomMetrics(JsonHandler):
     def __init__(self) -> None:
         super().__init__()
+
+    def load_ground_json(self, example: Dict) -> str:
+        if not example:
+            print(f"Ground truth JSON path not found")
+        
+        path: str = example["json_ground_path"]
+        json_str: str = None
+
+        with open(path, "r", encoding="utf-8") as f:
+            json_str = f.read()
+
+        return json_str
 
     def generate_json_from_model(
             self, 
@@ -145,6 +158,8 @@ class CustomMetrics(JsonHandler):
         count_artefacts = 0
         count_valid_after_clean = 0
         num_examples = len(test_set)
+        lev_sum = 0
+        lev_count = 0
 
         if num_examples == 0:
             print("[evaluate_on_testset] Brak przykładów w test_secie.")
@@ -152,6 +167,7 @@ class CustomMetrics(JsonHandler):
 
         for example in tqdm(test_set, desc="Evaluating", total=num_examples):
             pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
+            ground_json: str = self.load_ground_json(example = example)
 
             # 1. Sprawdzamy artefakty
             if self.check_if_any_artefacts(pred_json_str):
@@ -169,6 +185,16 @@ class CustomMetrics(JsonHandler):
             if self.is_json_loadable(cleaned_str):
                 count_valid_after_clean += 1
 
+                # Levenshtein section
+                if ground_json:
+                    dist_val = distance(cleaned_str, ground_json)
+                    lev_sum += dist_val
+                    lev_count += 1
+
+        avg_lev_dist: float = 0.0
+        if lev_count > 0:
+            avg_lev_dist = lev_sum / lev_count
+
         artefact_percentage = round((count_artefacts / num_examples) * 100, 2)
         valid_after_clean_percentage = round((count_valid_after_clean / num_examples) * 100, 2)
-        return artefact_percentage, valid_after_clean_percentage
+        return artefact_percentage, valid_after_clean_percentage, avg_lev_dist
