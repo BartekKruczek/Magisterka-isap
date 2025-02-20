@@ -147,6 +147,8 @@ class CustomMetrics(JsonHandler):
             test_set,
             model, 
             processor,
+            model_fix,
+            processor_fix,
             do_auto_fix: bool = False,
             debug: bool = False
     ) -> tuple:
@@ -179,7 +181,7 @@ class CustomMetrics(JsonHandler):
             # 3. Jeśli auto-fix jest włączony, a JSON nie parsuje, spróbuj poprawić
             if do_auto_fix:
                 if not self.is_json_loadable(cleaned_str):
-                    cleaned_str = self.auto_fix_json(cleaned_str, model, processor, max_iterations=5, debug=debug)
+                    cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
 
             # 4. Sprawdzamy, czy wynikowy ciąg da się sparsować jako JSON
             if self.is_json_loadable(cleaned_str):

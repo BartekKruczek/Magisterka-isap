@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 
 # local_rank = int(os.environ["LOCAL_RANK"])
 # os.environ["CUDA_VISIBLE_DEVICES"] = str(local_rank)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
@@ -60,7 +60,7 @@ class TrainEvalLossCallback(TrainerCallback):
             else:
                 print("[on_evaluate] WARN: No 'eval_loss' found in metrics.", flush = True)
 
-def process_years_to_excel(years_to_iterate=[2014, 2015, 2016], excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = False):
+def process_years_to_excel(years_to_iterate=[2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021], excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = True):
         base_json_path = "lemkin-json-from-html"
         json_results = []
         for year_val in years_to_iterate:
@@ -254,7 +254,7 @@ def split_datasets():
 
     return train_dataset, val_dataset, test_df
 
-df_result = process_years_to_excel([2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021], "matched_dates_cleaned_version2.xlsx")
+df_result = process_years_to_excel([2014], "matched_dates_cleaned_version2.xlsx")
 
 model_id = "Qwen/Qwen2-VL-7B-Instruct"
 # model_id = "Qwen/Qwen2-VL-7B-Instruct-AWQ" 
@@ -265,8 +265,7 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=True,
     bnb_4bit_quant_type="nf4",
 )
-# print(device)
-# local_rank = int(os.environ["LOCAL_RANK"])
+
 model = AutoModelForVision2Seq.from_pretrained(
     model_id,
     device_map = "auto",
@@ -322,6 +321,8 @@ def collate_fn(examples, debug: bool = False):
         padding=True,
         return_tensors="pt",
     ).to(model.device)
+    # model_device = next(model.parameters()).device
+    # batch = {k: v.to(model_device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
     # for key, value in batch.items():
     #     if isinstance(value, torch.Tensor):
