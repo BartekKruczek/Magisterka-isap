@@ -326,6 +326,13 @@ valid_loader = DataLoader(
     collate_fn=collate_fn
 )
 
+test_loader = DataLoader(
+    dataset=test_set,
+    batch_size=1,
+    shuffle=False,
+    collate_fn=collate_fn
+)
+
 epochs: int = 15
 train_losses: List[float] = []
 valid_losses: List[float] = []
@@ -375,4 +382,20 @@ for epoch in range(1, epochs + 1):
     valid_losses.append(epoch_val_loss)
 
     print(f"[Epoch {epoch+1}] Valid Loss: {epoch_val_loss:.4f}")
+
+    test_loss = 0.0
+    with torch.no_grad():
+        for batch in test_loader:
+            batch = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
+
+            outputs = model(
+                input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"],
+                pixel_values=batch["pixel_values"],
+                labels=batch["labels"]
+            )
+            
+            test_loss += outputs.loss.item()
+    test_loss /= len(test_loader)
+    print(f"[Test] Loss: {test_loss:.4f}")
 
