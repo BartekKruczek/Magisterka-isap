@@ -171,24 +171,21 @@ class CustomMetrics(JsonHandler):
             pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
             ground_json: str = self.load_ground_json(example = example)
 
-            # 1. Sprawdzamy artefakty
             if self.check_if_any_artefacts(pred_json_str):
                 count_artefacts += 1
 
-            # 2. Wycinamy fragment z JSON-em
             cleaned_str = self.extract_clean_json(pred_json_str)
 
-            # 3. Jeśli auto-fix jest włączony, a JSON nie parsuje, spróbuj poprawić
             if do_auto_fix:
                 if not self.is_json_loadable(cleaned_str):
                     cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
 
-            # 4. Sprawdzamy, czy wynikowy ciąg da się sparsować jako JSON
             if self.is_json_loadable(cleaned_str):
                 count_valid_after_clean += 1
 
                 # Levenshtein section
                 if ground_json:
+                    # TODO normalize both json-s
                     dist_val = distance(cleaned_str, ground_json)
                     lev_sum += dist_val
                     lev_count += 1

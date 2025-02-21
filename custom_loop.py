@@ -23,6 +23,8 @@ model = AutoModelForVision2Seq.from_pretrained(
     trust_remote_code=True,
     cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache",
 )
+model.config.use_cache = False
+model.gradient_checkpointing_enable()
 
 peft_config = LoraConfig(
     r=8,
@@ -279,7 +281,7 @@ def collate_fn(examples, debug: bool = False):
         images=image_inputs_list,
         padding=True,
         return_tensors="pt",
-    ).to(model.device)
+    )
 
     if debug:
         print(batch)
@@ -319,27 +321,23 @@ train_set, valid_set, test_set = split_datasets()
 
 train_loader = DataLoader(
     dataset=train_set,
-    batch_size=2,
+    batch_size=1,
     shuffle=True,           
     collate_fn=collate_fn
 )
 
 valid_loader = DataLoader(
     dataset=valid_set,
-    batch_size=2,
-    shuffle=True,
+    batch_size=1,
+    shuffle=False,
     collate_fn=collate_fn
 )
 
 epochs: int = 5
-accumulation_steps: int = 8
+accumulation_steps: int = 16
 train_losses: List[float] = []
 valid_losses: List[float] = []
 
-len_train: int = len(train_loader)
-len_valid: int = len(valid_loader)
-
-# TODO gradient checkpointing
 # TODO cpu offload
 
 early_stopping = EarlyStopping(patience=3, delta=0.01)
@@ -354,13 +352,13 @@ lr_scheduler = get_scheduler(
     num_training_steps=num_training_steps,
 )
 
-for epoch in range(1, epochs + 1):
+for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
     model.train()
     running_loss: float = 0.0
 
     optimizer.zero_grad()
 
-    for step, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch}/{epochs} [Train]", leave=False, miniters=int(len_train / 4))):
+    for step, batch in enumerate(train_loader):
         batch = {k: v.to(model.device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
         outputs = model(**batch)
@@ -386,7 +384,7 @@ for epoch in range(1, epochs + 1):
     model.eval()
     val_loss = 0.0
     with torch.no_grad():
-        for _, batch in enumerate(tqdm(valid_loader, desc=f"Epoch {epoch}/{epochs} [Valid]", leave=False, miniters=int(len_valid / 4))):
+        for batch in valid_loader:
             batch = {k: v.to(model.device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
             outputs = model(**batch)
