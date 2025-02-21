@@ -32,8 +32,6 @@ peft_config = LoraConfig(
 )
 model = get_peft_model(model, peft_config)
 
-# TODO add warpum and lr scheduler
-
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
 
@@ -346,6 +344,16 @@ len_valid: int = len(valid_loader)
 
 early_stopping = EarlyStopping(patience=3, delta=0.01)
 
+num_training_steps = len(train_loader) * epochs
+num_warmup_steps = int(0.1 * num_training_steps)
+
+lr_scheduler = get_scheduler(
+    name="cosine",
+    optimizer=optimizer,
+    num_warmup_steps=num_warmup_steps,
+    num_training_steps=num_training_steps,
+)
+
 for epoch in range(1, epochs + 1):
     model.train()
     running_loss: float = 0.0
@@ -362,6 +370,7 @@ for epoch in range(1, epochs + 1):
 
         if (step + 1) % accumulation_steps == 0:
             optimizer.step()
+            lr_scheduler.step()
             optimizer.zero_grad()
 
         running_loss += loss.item()
