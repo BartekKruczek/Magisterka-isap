@@ -3,7 +3,7 @@ import os
 import regex as re
 import pandas as pd
 
-from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, AutoModelForVision2Seq
 from torch.utils.data import DataLoader
 from peft import get_peft_model, LoraConfig
 from typing import List
@@ -14,7 +14,7 @@ from tqdm import tqdm
 from utils import Utils
 
 model_id: str = "Qwen/Qwen2-VL-7B-Instruct"
-model = Qwen2VLForConditionalGeneration.from_pretrained(
+model = AutoModelForVision2Seq.from_pretrained(
     model_id,
     device_map = "auto",
     torch_dtype=torch.float16,
@@ -33,9 +33,6 @@ model = get_peft_model(model, peft_config)
 
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
 
 def process_years_to_excel(years_to_iterate, excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = True):
         base_json_path = "lemkin-json-from-html"
@@ -155,7 +152,7 @@ def get_pngs_path_from_folder(given_folder_path: str = None) -> list[str]:
 
 def get_dataset(debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
     dataset: list[list[dict]] = []
-    max_batch_threshold: int = 3
+    max_batch_threshold: int = 8
 
     # convert to dataframe
     df = dataframe
@@ -272,12 +269,16 @@ def collate_fn(examples, debug: bool = False):
         image_inputs, _ = process_vision_info(message)
         image_inputs_list.append(image_inputs)
 
+    for i, img in enumerate(image_inputs_list):
+        if img is None:
+            print(f"[DEBUG] image_inputs_list[{i}] is None!")
+            
     batch = processor(
         text=merged_texts,
         images=image_inputs_list,
         padding=True,
         return_tensors="pt",
-    )
+    ).to(model.device)
 
     if debug:
         print(batch)
@@ -310,6 +311,9 @@ def collate_fn(examples, debug: bool = False):
 
     return batch
 
+processor = AutoProcessor.from_pretrained(model_id)
+processor.tokenizer.padding_side = 'right'
+
 train_set, valid_set, test_set = split_datasets()
 
 train_loader = DataLoader(
@@ -321,81 +325,63 @@ train_loader = DataLoader(
 
 valid_loader = DataLoader(
     dataset=valid_set,
-    batch_size=1,
-    shuffle=False,
+    batch_size=2,
+    shuffle=True,
     collate_fn=collate_fn
 )
 
-test_loader = DataLoader(
-    dataset=test_set,
-    batch_size=1,
-    shuffle=False,
-    collate_fn=collate_fn
-)
-
-epochs: int = 15
+epochs: int = 5
+accumulation_steps: int = 8
 train_losses: List[float] = []
 valid_losses: List[float] = []
+
+# TODO gradient checkpointing
+# TODO cpu offload
 
 for epoch in range(1, epochs + 1):
     model.train()
     running_loss: float = 0.0
 
-    for _, batch in enumerate(train_loader):
-        batch = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
+    optimizer.zero_grad()
 
-        outputs = model(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-            pixel_values=batch["pixel_values"],
-            labels=batch["labels"]
-        )
-        loss = outputs.loss
+    for step, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch}/{epochs} [Train]", leave=False)):
+        batch = {k: v.to(model.device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
+        outputs = model(**batch)
+
+        loss = outputs.loss / accumulation_steps
         loss.backward()
 
-        optimizer.step()
-        optimizer.zero_grad()
+        if (step + 1) % accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
 
         running_loss += loss.item()
+
+        del batch, outputs
+        torch.cuda.empty_cache()
 
     epoch_train_loss = running_loss / len(train_loader)
     train_losses.append(epoch_train_loss)
 
-    print(f"[Epoch {epoch+1}] Train Loss: {epoch_train_loss:.4f}")
+    print(f"[Epoch {epoch}] Train Loss: {epoch_train_loss:.4f}")
 
     model.eval()
     val_loss = 0.0
     with torch.no_grad():
-        for batch in valid_loader:
-            batch = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
+        for _, batch in enumerate(tqdm(valid_loader, desc=f"Epoch {epoch}/{epochs} [Valid]", leave=False)):
+            batch = {k: v.to(model.device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
-            outputs = model(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                pixel_values=batch["pixel_values"],
-                labels=batch["labels"]
-            )
+            # TODO add early stopping
+
+            outputs = model(**batch)
+
             val_loss += outputs.loss.item()
+
+            del batch, outputs
+            torch.cuda.empty_cache()
 
     epoch_val_loss = val_loss / len(valid_loader)
     valid_losses.append(epoch_val_loss)
 
-    print(f"[Epoch {epoch+1}] Valid Loss: {epoch_val_loss:.4f}")
-
-    test_loss = 0.0
-    with torch.no_grad():
-        for batch in test_loader:
-            batch = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
-
-            outputs = model(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                pixel_values=batch["pixel_values"],
-                labels=batch["labels"]
-            )
-            
-            test_loss += outputs.loss.item()
-    test_loss /= len(test_loader)
-    print(f"[Test] Loss: {test_loss:.4f}")
-
+    print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f}")
