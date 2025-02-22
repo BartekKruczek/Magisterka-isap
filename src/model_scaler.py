@@ -6,6 +6,7 @@ from transformers import AutoModelForVision2Seq, AutoProcessor, AutoModelForCaus
 
 from metrics import CustomMetrics
 from custom_datasets import CustomDataSets
+from plot_results import PlotResults
 
 base_model_id = "Qwen/Qwen2-VL-7B-Instruct"
 checkpoint_folder = "qwen2-output/checkpoint-588"
@@ -47,7 +48,8 @@ custom_set = CustomDataSets()
 test_set = custom_set.get_dataset(debug=False, dataframe=test_df)
 
 custom_metrics = CustomMetrics()
-artefact_pct, valid_pct, avg_lev_dist = custom_metrics.evaluate_on_testset(
+plot = PlotResults()
+artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_on_testset(
     test_set,
     merged_model, 
     processor,
@@ -60,3 +62,5 @@ artefact_pct, valid_pct, avg_lev_dist = custom_metrics.evaluate_on_testset(
 print(f"Percentage of all artefacts detected: {artefact_pct}")
 print(f"Valid json files after cleaning: {valid_pct}")
 print(f"Average lev dist: {avg_lev_dist}")
+
+plot.plot_average_Lev(lev_dict=pages_lev_map)

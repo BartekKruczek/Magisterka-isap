@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from typing import List
+from typing import List, Dict
 
 class PlotResults:
     def __repr__(self) -> str:
@@ -19,4 +19,22 @@ class PlotResults:
         plt.grid(True)
         plt.tight_layout()
         plt.savefig('loss_plot.png')
+        plt.close()
+
+    def plot_average_Lev(self, lev_dict: Dict) -> plt:
+        x_vals = []
+        y_vals = []
+
+        for pages, (sum_lev, doc_count) in sorted(lev_dict.items()):
+            x_vals.append(pages)
+            avg_lev = sum_lev / doc_count
+            y_vals.append(avg_lev)
+
+        plt.figure(figsize=(16,9))
+        plt.plot(x_vals, y_vals, marker="o", linestyle="--", color="blue")
+        plt.title("Average Levenshtein vs number of pages")
+        plt.xlabel("Number of pages in one document")
+        plt.ylabel("Average Lev. distance")
+        plt.grid(True)
+        plt.savefig('avg_lev_per_pages.png')
         plt.close()

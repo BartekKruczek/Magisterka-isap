@@ -4,6 +4,7 @@ import regex as re
 
 from tqdm import tqdm
 from typing import Dict
+from collections import defaultdict
 from qwen_vl_utils import process_vision_info
 from Levenshtein import distance
 
@@ -182,6 +183,8 @@ class CustomMetrics(JsonHandler):
         
         Jeśli do_auto_fix=True, dla niepoprawnych JSONów zostanie podjęta próba naprawy przy użyciu model_fix i tokenizer_fix.
         """
+        pages_lev_map = defaultdict(lambda: [0, 0])
+
         count_artefacts = 0
         count_valid_after_clean = 0
         num_examples = len(test_set)
@@ -193,6 +196,12 @@ class CustomMetrics(JsonHandler):
             return 0.0, 0.0
 
         for example in tqdm(test_set, desc="Evaluating", total=num_examples):
+            message_list = example["messages"]
+            page_count = sum(
+                1 for m in message_list 
+                if isinstance(m, dict) and m.get("type") == "image"
+            )
+
             pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
             ground_json: str = self.load_ground_json(example = example)
 
@@ -201,9 +210,8 @@ class CustomMetrics(JsonHandler):
 
             cleaned_str = self.extract_clean_json(pred_json_str)
 
-            if do_auto_fix:
-                if not self.is_json_loadable(cleaned_str):
-                    cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
+            if do_auto_fix and not self.is_json_loadable(cleaned_str):
+                cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
 
             if self.is_json_loadable(cleaned_str):
                 count_valid_after_clean += 1
@@ -216,10 +224,16 @@ class CustomMetrics(JsonHandler):
                         dist_val = distance(predicted_norm, ground_norm)
                         lev_sum += dist_val
                         lev_count += 1
+
+                        pages_lev_map[page_count][0] += dist_val
+                        pages_lev_map[page_count][1] += 1
                     else:
                         dist_val = distance(cleaned_str, ground_json)
                         lev_sum += dist_val
                         lev_count += 1
+
+                        pages_lev_map[page_count][0] += dist_val
+                        pages_lev_map[page_count][1] += 1
 
         avg_lev_dist: float = 0.0
         if lev_count > 0:
@@ -227,4 +241,4 @@ class CustomMetrics(JsonHandler):
 
         artefact_percentage = round((count_artefacts / num_examples) * 100, 2)
         valid_after_clean_percentage = round((count_valid_after_clean / num_examples) * 100, 2)
-        return artefact_percentage, valid_after_clean_percentage, avg_lev_dist
+        return artefact_percentage, valid_after_clean_percentage, avg_lev_dist, pages_lev_map

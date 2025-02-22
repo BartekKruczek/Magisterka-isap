@@ -1,3 +1,6 @@
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+
 import torch
 import os
 import time
@@ -45,8 +48,6 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
 processor = AutoProcessor.from_pretrained(model_id)
 processor.tokenizer.padding_side = 'right'
 
-# df_result = process_years_to_excel([2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021], "matched_dates_cleaned_version2.xlsx")
-
 train_set, valid_set, test_set = custom_sets.split_datasets()
 
 train_loader = DataLoader(
@@ -63,7 +64,7 @@ valid_loader = DataLoader(
     collate_fn=custom_sets.collate_fn
 )
 
-epochs: int = 5
+epochs: int = 10
 accumulation_steps: int = 16
 train_losses: List[float] = []
 valid_losses: List[float] = []
@@ -112,7 +113,7 @@ for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
     epoch_train_loss = running_loss / len(train_loader)
     train_losses.append(epoch_train_loss)
 
-    print(f" \n[Epoch {epoch}] Train Loss: {epoch_train_loss:.4f}", flush=True)
+    print(f" \n \n[Epoch {epoch}] Train Loss: {epoch_train_loss:.4f}", flush=True)
 
     model.eval()
     val_loss = 0.0
@@ -142,6 +143,6 @@ for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
         print("Early stopping")
         break
 
-    print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f} \n", flush=True)
+    print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f}", flush=True)
 
 plot.plot_loss_function(train_loss=train_losses, validation_loss=valid_losses)
