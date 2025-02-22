@@ -10,8 +10,10 @@ from tqdm import tqdm
 
 from early_stop import EarlyStopping
 from custom_datasets import CustomDataSets
+from plot_results import PlotResults
 
 custom_sets = CustomDataSets()
+plot = PlotResults()
 
 my_time: float = time.time()
 time_str = time.strftime("%Y%m%d-%H%M%S", time.localtime(my_time))
@@ -141,3 +143,5 @@ for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
         break
 
     print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f} \n", flush=True)
+
+plot.plot_loss_function(train_loss=train_losses, validation_loss=valid_losses)
