@@ -7,9 +7,9 @@ from typing import List
 from tqdm import tqdm
 
 from early_stop import EarlyStopping
-from datasets import DataSets
+from custom_datasets import CustomDataSets
 
-sets = DataSets()
+custom_sets = CustomDataSets()
 
 model_id: str = "Qwen/Qwen2-VL-7B-Instruct"
 model = AutoModelForVision2Seq.from_pretrained(
@@ -40,20 +40,20 @@ processor.tokenizer.padding_side = 'right'
 
 # df_result = process_years_to_excel([2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021], "matched_dates_cleaned_version2.xlsx")
 
-train_set, valid_set, test_set = sets.split_datasets()
+train_set, valid_set, test_set = custom_sets.split_datasets()
 
 train_loader = DataLoader(
     dataset=train_set,
     batch_size=1,
     shuffle=True,           
-    collate_fn=sets.collate_fn
+    collate_fn=custom_sets.collate_fn
 )
 
 valid_loader = DataLoader(
     dataset=valid_set,
     batch_size=1,
     shuffle=False,
-    collate_fn=sets.collate_fn
+    collate_fn=custom_sets.collate_fn
 )
 
 epochs: int = 5
@@ -100,7 +100,7 @@ for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
     epoch_train_loss = running_loss / len(train_loader)
     train_losses.append(epoch_train_loss)
 
-    print(f"[Epoch {epoch}] Train Loss: {epoch_train_loss:.4f} \n", flush=True)
+    print(f" \n[Epoch {epoch}] Train Loss: {epoch_train_loss:.4f}", flush=True)
 
     model.eval()
     val_loss = 0.0
