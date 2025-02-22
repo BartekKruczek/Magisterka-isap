@@ -176,7 +176,7 @@ def get_pngs_path_from_folder(given_folder_path: str = None) -> list[str]:
 
 def get_dataset(debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
     dataset: list[list[dict]] = []
-    max_batch_threshold: int = 3
+    max_batch_threshold: int = 4
 
     # convert to dataframe
     df = dataframe
@@ -378,7 +378,7 @@ args = SFTConfig(
     num_train_epochs = 15,
     per_device_train_batch_size = 1,
     gradient_accumulation_steps = 8,
-    gradient_checkpointing = False,
+    gradient_checkpointing = True,
     optim = "adamw_torch_fused",
     logging_strategy = "epoch",
     eval_strategy = "epoch",

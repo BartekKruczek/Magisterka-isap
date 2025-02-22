@@ -1,4 +1,6 @@
 import torch
+import os
+import time
 
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, AutoModelForVision2Seq, get_scheduler
 from torch.utils.data import DataLoader
@@ -10,6 +12,9 @@ from early_stop import EarlyStopping
 from custom_datasets import CustomDataSets
 
 custom_sets = CustomDataSets()
+
+my_time: float = time.time()
+time_str = time.strftime("%Y%m%d-%H%M%S", time.localtime(my_time))
 
 model_id: str = "Qwen/Qwen2-VL-7B-Instruct"
 model = AutoModelForVision2Seq.from_pretrained(
@@ -73,6 +78,11 @@ lr_scheduler = get_scheduler(
     num_training_steps=num_training_steps,
 )
 
+best_ckpt_dir: str = f"Checkpoints/{time_str}"
+os.makedirs(best_ckpt_dir, exist_ok=True)
+
+best_val_loss = float("inf")
+
 for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
     model.train()
     running_loss: float = 0.0
@@ -119,10 +129,15 @@ for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
     valid_losses.append(epoch_val_loss)
 
     early_stopping(val_loss=epoch_val_loss)
+
+    if -epoch_val_loss > early_stopping.best_score:
+        best_val_loss = epoch_val_loss
+
+        model.save_pretrained(best_ckpt_dir)
+        processor.save_pretrained(best_ckpt_dir)
+
     if early_stopping.early_stop:
         print("Early stopping")
         break
 
     print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f} \n", flush=True)
-
-    # TODO add saving best model

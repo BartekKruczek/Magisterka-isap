@@ -132,7 +132,7 @@ class CustomDataSets:
 
     def get_dataset(self, debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
         dataset: list[list[dict]] = []
-        max_batch_threshold: int = 8
+        max_batch_threshold: int = 10
 
         # convert to dataframe
         df = dataframe

@@ -263,7 +263,7 @@ class Utils(Data):
                 counter += 1
 
         # determine how many pages (top) file should have
-        if counter <= 3:
+        if counter <= 10:
             return True
         else:
             return False

@@ -92,6 +92,30 @@ class CustomMetrics(JsonHandler):
 
         return has_before or has_after
     
+    def normalize_json_str(json_str: str) -> str:
+        """
+        Parse a JSON string into a Python object, sort all dictionaries,
+        then dump back to a string with consistent settings.
+        Returns the normalized JSON string if successful, otherwise the original string.
+        """
+        try:
+            obj = json.loads(json_str)
+        except json.JSONDecodeError:
+            return json_str
+
+        def sort_dict_keys(item):
+            if isinstance(item, dict):
+                return {k: sort_dict_keys(item[k]) for k in sorted(item)}
+            elif isinstance(item, list):
+                return [sort_dict_keys(elem) for elem in item]
+            else:
+                return item
+
+        sorted_obj = sort_dict_keys(obj)
+
+        normalized_str = json.dumps(sorted_obj, ensure_ascii=False, separators=(",", ":"))
+        return normalized_str
+    
     def extract_clean_json(self, s: str) -> str:
         """
         Zwraca wycinek ciągu s od pierwszego '{' do ostatniego '}' włącznie.
@@ -150,6 +174,7 @@ class CustomMetrics(JsonHandler):
             model_fix,
             processor_fix,
             do_auto_fix: bool = False,
+            do_normalize_jsons: bool = True,
             debug: bool = False
     ) -> tuple:
         """
@@ -183,12 +208,18 @@ class CustomMetrics(JsonHandler):
             if self.is_json_loadable(cleaned_str):
                 count_valid_after_clean += 1
 
-                # Levenshtein section
                 if ground_json:
-                    # TODO normalize both json-s
-                    dist_val = distance(cleaned_str, ground_json)
-                    lev_sum += dist_val
-                    lev_count += 1
+                    if do_normalize_jsons:
+                        predicted_norm = self.normalize_json_str(cleaned_str)
+                        ground_norm = self.normalize_json_str(ground_json)
+
+                        dist_val = distance(predicted_norm, ground_norm)
+                        lev_sum += dist_val
+                        lev_count += 1
+                    else:
+                        dist_val = distance(cleaned_str, ground_json)
+                        lev_sum += dist_val
+                        lev_count += 1
 
         avg_lev_dist: float = 0.0
         if lev_count > 0:
