@@ -1,32 +1,124 @@
-import pandas as pd
 import os
+import regex as re
+import pandas as pd
 import torch
 
-from datasets import load_dataset
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
-from utils import Utils
 from qwen_vl_utils import process_vision_info
+from tqdm import tqdm
 from transformers import AutoProcessor
 
-class DataSets:
-    def __init__(self, excel_file_path: str = None, model: str = None):
-        self.excel_file_path = "matched_dates_cleaned_version2.xlsx"
-        self.model = model
+from utils import Utils
 
-    def __repr__(self) -> str:
-        return "DataSets class"
-    
+class CustomDataSets:
+    def __init__(self, model_id = "Qwen/Qwen2-VL-7B-Instruct"):
+        self.model_id = model_id
+
+    def process_years_to_excel(self, years_to_iterate, excel_filename="matched_dates_cleaned_version2.xlsx", debug: bool = True):
+        base_json_path = "lemkin-json-from-html"
+        json_results = []
+        for year_val in years_to_iterate:
+            json_folder_base = os.path.join(base_json_path, str(year_val))
+
+            if debug:
+                print(f"Przetwarzanie JSON w: {json_folder_base}", flush = True)
+
+            for root, dirs, files in os.walk(json_folder_base):
+                for file in files:
+                    if file.endswith(".json"):
+                        filename_no_ext = os.path.splitext(file)[0]
+                        try:
+                            year_str, doc_id_str = filename_no_ext.split("_", 1)
+                            year = int(year_str)
+                            doc_id = doc_id_str.strip()
+                        except ValueError:
+                            continue
+
+                        match_json = re.search(r'(\d+)$', doc_id)
+                        short_doc_id_json = str(int(match_json.group(1))) if match_json else doc_id
+
+                        if len(short_doc_id_json) >= 4:
+                            last4_doc_id_json = str(int(short_doc_id_json[-4:]))
+                        else:
+                            last4_doc_id_json = str(int(short_doc_id_json)) if short_doc_id_json.isdigit() else short_doc_id_json
+
+                        full_path = os.path.join(root, file)
+                        json_results.append({
+                            "year": year,
+                            "json_id": short_doc_id_json,
+                            "last4_doc_id": last4_doc_id_json,
+                            "json_path": full_path,
+                        })
+        
+        if debug:
+            print(f"Znaleziono {len(json_results)} plików JSON.", flush = True)
+
+        base_pdf_path = "lemkin-pdf"
+        png_results = []
+        for year_val in years_to_iterate:
+            pdf_folder_base = os.path.join(base_pdf_path, str(year_val))
+            if not os.path.isdir(pdf_folder_base):
+
+                if debug:
+                    print(f"Folder nie istnieje: {pdf_folder_base}", flush = True)
+
+                continue
+            for root, dirs, files in os.walk(pdf_folder_base):
+                for d in dirs:
+                    if d.endswith("_png"):
+                        folder_path = os.path.join(root, d)
+                        
+                        base_name = d[:-4] if d.endswith("_png") else d
+
+                        match_png = re.search(r'(\d+)$', base_name)
+                        short_doc_id_png = str(int(match_png.group(1))) if match_png else None
+                        if short_doc_id_png and len(short_doc_id_png) >= 4:
+                            last4_doc_id_png = str(int(short_doc_id_png[-4:]))
+                        elif short_doc_id_png:
+                            last4_doc_id_png = str(int(short_doc_id_png))
+                        else:
+                            last4_doc_id_png = None
+
+                        png_results.append({
+                            "year": year_val,
+                            "png_id": short_doc_id_png,
+                            "last4_doc_id": last4_doc_id_png,
+                            "image_folder_path": folder_path,
+                        })
+
+        df_json = pd.DataFrame(json_results)
+        df_png = pd.DataFrame(png_results)
+
+        df_merged = pd.merge(df_json, df_png, on=["year", "last4_doc_id"], how="inner")
+
+        df_result = df_merged[["year", "json_path", "image_folder_path"]]
+        df_result = df_result.rename(columns={
+            "json_path": "JSON file path",
+            "image_folder_path": "Image folder path"
+        })
+
+        if debug:
+            print("Przykładowe dopasowania:", flush = True)
+            print(df_result.head(), flush = True)
+            print(len(df_result), "dopasowań znaleziono.", flush = True)
+
+        df_result.to_excel(excel_filename, index=False)
+
+        if debug:
+            print(f"Dane zapisane do {excel_filename}", flush = True)
+        
+        return df_result
+
     def read_excel(self) -> pd.DataFrame:
-        return pd.read_excel(self.excel_file_path, engine = 'openpyxl')
-    
+            return pd.read_excel("matched_dates_cleaned_version2.xlsx", engine = 'openpyxl')
+        
     def sorting_by_page_number(self, png_path: str = None) -> int:
         split1: str = png_path.split("/")[-1]
         split2 = split1.split(".")[0]
         split3 = split2.split("_")[-1]
 
         return int(split3)
-    
+
     def get_pngs_path_from_folder(self, given_folder_path: str = None) -> list[str]:
         folder_path: str = str(given_folder_path)
         pngs_paths: list[str] = []
@@ -36,11 +128,11 @@ class DataSets:
                 if file.endswith(".png"):
                     pngs_paths.append(os.path.join(root, file))
 
-        return sorted(pngs_paths, key = self.sorting_by_page_number)
-    
+        return sorted(pngs_paths, key=lambda path: self.sorting_by_page_number(path))
+
     def get_dataset(self, debug: bool = False, dataframe: pd.DataFrame = None) -> list[list[dict]]:
         dataset: list[list[dict]] = []
-        max_batch_threshold: int = 2
+        max_batch_threshold: int = 10
 
         # convert to dataframe
         df = dataframe
@@ -70,7 +162,7 @@ class DataSets:
 
                     current_message_content.append({
                         "type": "text",
-                        "text": "Make a one, hierarchical .json from the image. Combine it with other messages."
+                        "text": "Make a one, hierarchical .json from the image. Combine it with other messages. Leave only generated structure, which will be dumped in the future"
                     })
 
                     message = [
@@ -95,7 +187,7 @@ class DataSets:
                 continue
 
         return dataset
-    
+
     def split_datasets(self):
         if not os.path.exists("test_csv/"):
             os.makedirs("test_csv/")
@@ -118,7 +210,7 @@ class DataSets:
 
     def collate_fn(self, examples, debug: bool = False):
         processor = AutoProcessor.from_pretrained(
-            "Qwen/Qwen2-VL-2B-Instruct",
+            self.model_id,
             cache_dir="/net/scratch/hscra/plgrid/plgkruczek/.cache",
             min_pixels=128*28*28,
             max_pixels=256*28*28,
@@ -155,16 +247,16 @@ class DataSets:
             image_inputs, _ = process_vision_info(message)
             image_inputs_list.append(image_inputs)
 
+        for i, img in enumerate(image_inputs_list):
+            if img is None:
+                print(f"[DEBUG] image_inputs_list[{i}] is None!")
+                
         batch = processor(
             text=merged_texts,
             images=image_inputs_list,
             padding=True,
             return_tensors="pt",
-        ).to("cuda")
-
-        # for key, value in batch.items():
-        #     if isinstance(value, torch.Tensor):
-        #         batch[key] = value.to(self.model.device)
+        )
 
         if debug:
             print(batch)

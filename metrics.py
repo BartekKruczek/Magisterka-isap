@@ -92,6 +92,30 @@ class CustomMetrics(JsonHandler):
 
         return has_before or has_after
     
+    def normalize_json_str(json_str: str) -> str:
+        """
+        Parse a JSON string into a Python object, sort all dictionaries,
+        then dump back to a string with consistent settings.
+        Returns the normalized JSON string if successful, otherwise the original string.
+        """
+        try:
+            obj = json.loads(json_str)
+        except json.JSONDecodeError:
+            return json_str
+
+        def sort_dict_keys(item):
+            if isinstance(item, dict):
+                return {k: sort_dict_keys(item[k]) for k in sorted(item)}
+            elif isinstance(item, list):
+                return [sort_dict_keys(elem) for elem in item]
+            else:
+                return item
+
+        sorted_obj = sort_dict_keys(obj)
+
+        normalized_str = json.dumps(sorted_obj, ensure_ascii=False, separators=(",", ":"))
+        return normalized_str
+    
     def extract_clean_json(self, s: str) -> str:
         """
         Zwraca wycinek ciągu s od pierwszego '{' do ostatniego '}' włącznie.
@@ -150,6 +174,7 @@ class CustomMetrics(JsonHandler):
             model_fix,
             processor_fix,
             do_auto_fix: bool = False,
+            do_normalize_jsons: bool = True,
             debug: bool = False
     ) -> tuple:
         """
@@ -171,27 +196,30 @@ class CustomMetrics(JsonHandler):
             pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
             ground_json: str = self.load_ground_json(example = example)
 
-            # 1. Sprawdzamy artefakty
             if self.check_if_any_artefacts(pred_json_str):
                 count_artefacts += 1
 
-            # 2. Wycinamy fragment z JSON-em
             cleaned_str = self.extract_clean_json(pred_json_str)
 
-            # 3. Jeśli auto-fix jest włączony, a JSON nie parsuje, spróbuj poprawić
             if do_auto_fix:
                 if not self.is_json_loadable(cleaned_str):
                     cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
 
-            # 4. Sprawdzamy, czy wynikowy ciąg da się sparsować jako JSON
             if self.is_json_loadable(cleaned_str):
                 count_valid_after_clean += 1
 
-                # Levenshtein section
                 if ground_json:
-                    dist_val = distance(cleaned_str, ground_json)
-                    lev_sum += dist_val
-                    lev_count += 1
+                    if do_normalize_jsons:
+                        predicted_norm = self.normalize_json_str(cleaned_str)
+                        ground_norm = self.normalize_json_str(ground_json)
+
+                        dist_val = distance(predicted_norm, ground_norm)
+                        lev_sum += dist_val
+                        lev_count += 1
+                    else:
+                        dist_val = distance(cleaned_str, ground_json)
+                        lev_sum += dist_val
+                        lev_count += 1
 
         avg_lev_dist: float = 0.0
         if lev_count > 0:

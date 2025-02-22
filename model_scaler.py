@@ -5,7 +5,7 @@ from peft import PeftModel
 from transformers import AutoModelForVision2Seq, AutoProcessor, AutoModelForCausalLM
 
 from metrics import CustomMetrics
-from DataCollator import DataSets
+from custom_datasets import CustomDataSets
 
 base_model_id = "Qwen/Qwen2-VL-7B-Instruct"
 checkpoint_folder = "qwen2-output/checkpoint-588"
@@ -43,8 +43,8 @@ processor_fix = AutoProcessor.from_pretrained(model_fix_name)
 
 test_df = pd.read_csv("test_csv/test_set.csv")
 
-datacollator = DataSets(excel_file_path="matched_dates_cleaned_version2.xlsx")
-test_set = datacollator.get_dataset(debug=False, dataframe=test_df)
+custom_set = CustomDataSets()
+test_set = custom_set.get_dataset(debug=False, dataframe=test_df)
 
 custom_metrics = CustomMetrics()
 artefact_pct, valid_pct, avg_lev_dist = custom_metrics.evaluate_on_testset(
