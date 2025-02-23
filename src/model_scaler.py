@@ -50,13 +50,14 @@ test_set = custom_set.get_dataset(debug=False, dataframe=test_df)
 custom_metrics = CustomMetrics()
 plot = PlotResults()
 artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_on_testset(
+    base_model_id,
     test_set,
     merged_model, 
     processor,
     model_fix,
     processor_fix,
     do_auto_fix=False,
-    use_xgrammar=False,
+    use_xgrammar=True,
     do_normalize_jsons=True,
     debug=False,
 )

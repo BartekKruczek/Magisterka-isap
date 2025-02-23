@@ -28,20 +28,28 @@ class CustomMetrics(JsonHandler):
 
         return json_str
     
-    def get_xgrammar_compiler(self, tokenizer):
+    def get_xgrammar_compiler(self, tokenizer, model_name: str) -> xgr.GrammarCompiler:
         """
         Return's Grammar Compiler based on tokenizer info -> needed for Logits Processor
         during generation process
         """
-        
+        config = AutoConfig.from_pretrained(model_name)
+
+        tokenizer_info = xgr.TokenizerInfo.from_huggingface(tokenizer, vocab_size=config.vocab_size)
+        grammar_compiler = xgr.GrammarCompiler(tokenizer_info)
+
+        compiled_grammar = grammar_compiler.compile_builtin_json_grammar()
+        return compiled_grammar
 
     def generate_json_from_model(
             self, 
             example, 
             model, 
             processor, 
-            max_new_tokens=8192, 
+            base_model_name: str,
+            max_new_tokens=8192,
             debug: bool = False,
+            use_xgrammar: bool = False,
         ):
         message = example["messages"]
         
@@ -71,6 +79,13 @@ class CustomMetrics(JsonHandler):
         model_device = next(model.parameters()).device
         inputs = {k: v.to(model_device) for k, v in inputs.items() if isinstance(v, torch.Tensor)}
 
+        logits_processor = None
+        
+        if use_xgrammar:
+            grammar_comp = self.get_xgrammar_compiler(processor.tokenizer, base_model_name)
+            xgr_logits_processor = xgr.contrib.hf.LogitsProcessor(grammar_comp)
+            logits_processor = [xgr_logits_processor]
+
         with torch.no_grad():
             output_ids = model.generate(
                 **inputs,
@@ -79,6 +94,7 @@ class CustomMetrics(JsonHandler):
                 num_beams=1,
                 temperature=0.01,
                 eos_token_id=processor.tokenizer.eos_token_id,
+                logits_processor=logits_processor,
             )
 
         generated_text = processor.tokenizer.decode(output_ids[0], skip_special_tokens=True)
@@ -178,6 +194,7 @@ class CustomMetrics(JsonHandler):
 
     def evaluate_on_testset(
             self, 
+            model_id: str,
             test_set,
             model, 
             processor,
@@ -193,6 +210,9 @@ class CustomMetrics(JsonHandler):
         
         Jeśli do_auto_fix=True, dla niepoprawnych JSONów zostanie podjęta próba naprawy przy użyciu model_fix i tokenizer_fix.
         """
+        if use_xgrammar:
+            print(f"\nUsing XGrammar as backend\n")
+
         pages_lev_map = defaultdict(lambda: [0, 0])
 
         count_artefacts = 0
@@ -212,7 +232,15 @@ class CustomMetrics(JsonHandler):
                 if isinstance(m, dict) and m.get("type") == "image"
             )
 
-            pred_json_str = self.generate_json_from_model(example, model, processor, debug=debug)
+            pred_json_str = self.generate_json_from_model(
+                example, 
+                model, 
+                processor, 
+                base_model_name=model_id,
+                debug=debug, 
+                use_xgrammar=use_xgrammar
+            )
+            
             ground_json: str = self.load_ground_json(example = example)
 
             if self.check_if_any_artefacts(pred_json_str):
