@@ -1,10 +1,12 @@
 import json
 import torch
 import regex as re
+import xgrammar as xgr
 
 from tqdm import tqdm
 from typing import Dict
 from collections import defaultdict
+from transformers import AutoConfig
 from qwen_vl_utils import process_vision_info
 from Levenshtein import distance
 
@@ -25,6 +27,13 @@ class CustomMetrics(JsonHandler):
             json_str = f.read()
 
         return json_str
+    
+    def get_xgrammar_compiler(self, tokenizer):
+        """
+        Return's Grammar Compiler based on tokenizer info -> needed for Logits Processor
+        during generation process
+        """
+        
 
     def generate_json_from_model(
             self, 
@@ -175,6 +184,7 @@ class CustomMetrics(JsonHandler):
             model_fix,
             processor_fix,
             do_auto_fix: bool = False,
+            use_xgrammar: bool = False,
             do_normalize_jsons: bool = True,
             debug: bool = False
     ) -> tuple:
