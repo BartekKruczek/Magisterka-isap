@@ -192,6 +192,8 @@ class CustomDataSets:
         if not os.path.exists("test_csv/"):
             os.makedirs("test_csv/")
 
+        self.process_years_to_excel(years_to_iterate=[2014,2015,2016,2017,2018,2019,2020,2021])
+
         df = self.read_excel()
 
         # split the dataset into training and validation

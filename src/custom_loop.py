@@ -130,19 +130,16 @@ for epoch in tqdm(range(1, epochs + 1), desc="Training Progress", leave=True):
 
     epoch_val_loss = val_loss / len(valid_loader)
     valid_losses.append(epoch_val_loss)
+    print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f}", flush=True)
 
-    early_stopping(val_loss=epoch_val_loss)
-
-    if -epoch_val_loss > early_stopping.best_score:
+    if early_stopping.best_score is None or -epoch_val_loss > early_stopping.best_score:
         best_val_loss = epoch_val_loss
-
         model.save_pretrained(best_ckpt_dir)
         processor.save_pretrained(best_ckpt_dir)
 
+    early_stopping(val_loss=epoch_val_loss)
     if early_stopping.early_stop:
         print("Early stopping")
         break
-
-    print(f"[Epoch {epoch}] Valid Loss: {epoch_val_loss:.4f}", flush=True)
 
 plot.plot_loss_function(train_loss=train_losses, validation_loss=valid_losses)
