@@ -9,7 +9,7 @@ from custom_datasets import CustomDataSets
 from plot_results import PlotResults
 
 base_model_id = "Qwen/Qwen2-VL-7B-Instruct"
-checkpoint_folder = "qwen2-output/checkpoint-588"
+checkpoint_folder = "Checkpoints/20250223-081257"
 cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
 model_fix_name: str = "Qwen/Qwen2.5-72B-Instruct"
 
@@ -42,7 +42,7 @@ merged_model.eval()
 processor = AutoProcessor.from_pretrained(base_model_id)
 processor_fix = AutoProcessor.from_pretrained(model_fix_name)
 
-test_df = pd.read_csv("test_csv/test_set.csv")
+test_df = pd.read_csv("Checkpoints/20250223-081257/test_set.csv")
 
 custom_set = CustomDataSets()
 test_set = custom_set.get_dataset(debug=False, dataframe=test_df)
@@ -64,5 +64,6 @@ artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_o
 print(f"Percentage of all artefacts detected: {artefact_pct}")
 print(f"Valid json files after cleaning: {valid_pct}")
 print(f"Average lev dist: {avg_lev_dist}")
+print(f"Pages - Lev map: {pages_lev_map}")
 
 plot.plot_average_Lev(lev_dict=pages_lev_map)
