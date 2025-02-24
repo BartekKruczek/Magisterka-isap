@@ -1,8 +1,10 @@
 import torch
 import pandas as pd
+import os
 
 from peft import PeftModel
 from transformers import AutoModelForVision2Seq, AutoProcessor, AutoModelForCausalLM
+from vllm import LLM
 
 from metrics import CustomMetrics
 from custom_datasets import CustomDataSets
@@ -39,8 +41,27 @@ peft_model = PeftModel.from_pretrained(
 merged_model = peft_model.merge_and_unload()
 merged_model.eval()
 
-processor = AutoProcessor.from_pretrained(base_model_id)
-processor_fix = AutoProcessor.from_pretrained(model_fix_name)
+processor = AutoProcessor.from_pretrained(base_model_id, trust_remote_code=True)
+processor_fix = AutoProcessor.from_pretrained(model_fix_name, trust_remote_code=True)
+
+torch.cuda.empty_cache()
+
+# save merged model -> pass later to vLLM
+save_path = "merged_qwen_vl_lora"
+if not os.path.exists(save_path):
+    os.makedirs(save_path, exist_ok=True)
+merged_model.save_pretrained(save_path)
+processor.save_pretrained(save_path)
+
+# get merged model for vLLM inference
+vLLM_model = LLM(
+    model=model_merged_path,
+    tensor_parallel_size=4,
+    dtype="float16",
+    trust_remote_code=True,
+    max_model_len=32768,
+    limit_mm_per_prompt={"image": 10},
+)
 
 test_df = pd.read_csv("Checkpoints/20250223-081257/test_set.csv")
 
@@ -50,10 +71,8 @@ test_set = custom_set.get_dataset(debug=False, dataframe=test_df)
 custom_metrics = CustomMetrics()
 plot = PlotResults()
 artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_on_testset(
-    base_model_id,
     test_set,
-    merged_model, 
-    processor,
+    save_path, 
     model_fix,
     processor_fix,
     do_auto_fix=False,

@@ -2,10 +2,15 @@ import json
 import torch
 import regex as re
 import xgrammar as xgr
+import PIL
+import os
 
+from PIL import Image
 from tqdm import tqdm
+from PIL import Image
+from vllm import SamplingParams
 from torch.utils.data import DataLoader
-from typing import Dict
+from typing import Dict, List
 from collections import defaultdict
 from transformers import AutoConfig
 from qwen_vl_utils import process_vision_info
@@ -41,71 +46,48 @@ class CustomMetrics(JsonHandler):
 
         compiled_grammar = grammar_compiler.compile_builtin_json_grammar()
         return compiled_grammar
+    
+    def get_all_images(self, path: str) -> List:
+        all_imgs: List = []
+        for elem in path:
+            img_path: str = os.path.join(path, elem)
+            try:
+                img = Image.open(img_path).convert("RGB")
+                all_imgs.append(img)
+            except Exception as e:
+                print(f"[get_all_images] Błąd wczytywania obrazu {img_path}: {e}")
+
+        return all_imgs
 
     def generate_json_from_model(
             self, 
             example, 
             model, 
-            processor, 
-            base_model_name: str,
-            max_new_tokens=32768,
-            debug: bool = False,
+            debug: bool = True,
             use_xgrammar: bool = False,
         ):
-        message = example["messages"]
-        
-        prompt_str = processor.apply_chat_template(
-            message,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-        if debug:
-            print("[generate_json_from_model] Prompt:\n", prompt_str)
+        curr_path: str = example["subfolder_name"]
+        list_of_images: List = self.get_all_images(curr_path)
+        prompt: str = """ 
+        Make a one, hierarchical .json from the images. Combine it with other messages. 
+        Leave only generated structure, which will be dumped in the future
+        """
 
-        image_inputs, _ = process_vision_info(message)
-
-        if image_inputs is not None:
-            inputs = processor(
-                text=[prompt_str],
-                images=[image_inputs],
-                return_tensors="pt",
-                padding=True
-            )
-        else:
-            inputs = processor(
-                text=[prompt_str],
-                return_tensors="pt",
-                padding=True
-            )
-        model_device = next(model.parameters()).device
-        inputs = {k: v.to(model_device) for k, v in inputs.items() if isinstance(v, torch.Tensor)}
-
-        logits_processor = None
-        
-        if use_xgrammar:
-            grammar_comp = self.get_xgrammar_compiler(processor.tokenizer, base_model_name)
-            xgr_logits_processor = xgr.contrib.hf.LogitsProcessor(grammar_comp)
-            logits_processor = [xgr_logits_processor]
-
-        model.eval()
+        sampling_params = SamplingParams(temperature=0.00)
         with torch.no_grad():
-            output_ids = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=True,
-                num_beams=1,
-                temperature=0.01,
-                eos_token_id=processor.tokenizer.eos_token_id,
-                logits_processor=logits_processor,
-            )
+            outputs = model.generate({
+                "prompt": prompt,
+                "multi_modal_data": {
+                    "image": list_of_images
+                },
+            }, sampling_params)
 
-        generated_text = processor.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        generated_text: str = ""
+        for o in outputs:
+            generated_text = o.outputs[0].text
 
         if debug:
-            print("[generate_json_from_model] Wygenerowany tekst:\n", generated_text)
-
-        del output_ids, inputs
-        torch.cuda.empty_cache()
+            print(f"Generated text: {generated_text}")
 
         return generated_text
     
@@ -199,10 +181,8 @@ class CustomMetrics(JsonHandler):
 
     def evaluate_on_testset(
             self, 
-            model_id: str,
             test_set,
-            model, 
-            processor,
+            model_merged_path: str,
             model_fix,
             processor_fix,
             do_auto_fix: bool = False,
@@ -245,9 +225,7 @@ class CustomMetrics(JsonHandler):
 
                 pred_json_str = self.generate_json_from_model(
                     example, 
-                    model, 
-                    processor, 
-                    base_model_name=model_id,
+                    vLLM_model,
                     debug=debug, 
                     use_xgrammar=use_xgrammar
                 )
@@ -284,7 +262,7 @@ class CustomMetrics(JsonHandler):
                             pages_lev_map[page_count][0] += dist_val
                             pages_lev_map[page_count][1] += 1
 
-                del ground_json, pred_json_str, cleaned_str, message_list, batch
+                del batch
                 torch.cuda.empty_cache()
 
         avg_lev_dist: float = 0.0

@@ -10,5 +10,5 @@ module load ML-bundle/24.06a
 cd $SCRATCH
 
 source .venv/bin/activate
-pip install vllm
+pip install -U vllm
 pip list
