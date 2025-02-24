@@ -57,7 +57,7 @@ artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_o
     model_fix,
     processor_fix,
     do_auto_fix=False,
-    use_xgrammar=True,
+    use_xgrammar=False,
     do_normalize_jsons=True,
     debug=False,
 )

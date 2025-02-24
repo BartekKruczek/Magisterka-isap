@@ -4,6 +4,7 @@ import regex as re
 import xgrammar as xgr
 
 from tqdm import tqdm
+from torch.utils.data import DataLoader
 from typing import Dict
 from collections import defaultdict
 from transformers import AutoConfig
@@ -47,7 +48,7 @@ class CustomMetrics(JsonHandler):
             model, 
             processor, 
             base_model_name: str,
-            max_new_tokens=8192,
+            max_new_tokens=32768,
             debug: bool = False,
             use_xgrammar: bool = False,
         ):
@@ -86,6 +87,7 @@ class CustomMetrics(JsonHandler):
             xgr_logits_processor = xgr.contrib.hf.LogitsProcessor(grammar_comp)
             logits_processor = [xgr_logits_processor]
 
+        model.eval()
         with torch.no_grad():
             output_ids = model.generate(
                 **inputs,
@@ -101,6 +103,9 @@ class CustomMetrics(JsonHandler):
 
         if debug:
             print("[generate_json_from_model] Wygenerowany tekst:\n", generated_text)
+
+        del output_ids, inputs
+        torch.cuda.empty_cache()
 
         return generated_text
     
@@ -118,7 +123,7 @@ class CustomMetrics(JsonHandler):
 
         return has_before or has_after
     
-    def normalize_json_str(json_str: str) -> str:
+    def normalize_json_str(self, json_str: str) -> str:
         """
         Parse a JSON string into a Python object, sort all dictionaries,
         then dump back to a string with consistent settings.
@@ -210,6 +215,8 @@ class CustomMetrics(JsonHandler):
         
         Jeśli do_auto_fix=True, dla niepoprawnych JSONów zostanie podjęta próba naprawy przy użyciu model_fix i tokenizer_fix.
         """
+        test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+
         if use_xgrammar:
             print(f"\nUsing XGrammar as backend\n")
 
@@ -224,54 +231,61 @@ class CustomMetrics(JsonHandler):
         if num_examples == 0:
             print("[evaluate_on_testset] Brak przykładów w test_secie.")
             return 0.0, 0.0
+        
+        for batch in tqdm(test_loader, desc="Evaluating"):
+            if not isinstance(batch, list):
+                batch = [batch]
 
-        for example in tqdm(test_set, desc="Evaluating", total=num_examples):
-            message_list = example["messages"]
-            page_count = sum(
-                1 for m in message_list 
-                if isinstance(m, dict) and m.get("type") == "image"
-            )
+            for example in batch:
+                message_list = example["messages"]
+                page_count = sum(
+                    1 for m in message_list 
+                    if isinstance(m, dict) and m.get("type") == "image"
+                )
 
-            pred_json_str = self.generate_json_from_model(
-                example, 
-                model, 
-                processor, 
-                base_model_name=model_id,
-                debug=debug, 
-                use_xgrammar=use_xgrammar
-            )
-            
-            ground_json: str = self.load_ground_json(example = example)
+                pred_json_str = self.generate_json_from_model(
+                    example, 
+                    model, 
+                    processor, 
+                    base_model_name=model_id,
+                    debug=debug, 
+                    use_xgrammar=use_xgrammar
+                )
+                
+                ground_json: str = self.load_ground_json(example = example)
 
-            if self.check_if_any_artefacts(pred_json_str):
-                count_artefacts += 1
+                if self.check_if_any_artefacts(pred_json_str):
+                    count_artefacts += 1
 
-            cleaned_str = self.extract_clean_json(pred_json_str)
+                cleaned_str = self.extract_clean_json(pred_json_str)
 
-            if do_auto_fix and not self.is_json_loadable(cleaned_str):
-                cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
+                if do_auto_fix and not self.is_json_loadable(cleaned_str):
+                    cleaned_str = self.auto_fix_json(cleaned_str, model_fix, processor_fix, max_iterations=5, debug=debug)
 
-            if self.is_json_loadable(cleaned_str):
-                count_valid_after_clean += 1
+                if self.is_json_loadable(cleaned_str):
+                    count_valid_after_clean += 1
 
-                if ground_json:
-                    if do_normalize_jsons:
-                        predicted_norm = self.normalize_json_str(cleaned_str)
-                        ground_norm = self.normalize_json_str(ground_json)
+                    if ground_json:
+                        if do_normalize_jsons:
+                            predicted_norm = self.normalize_json_str(cleaned_str)
+                            ground_norm = self.normalize_json_str(ground_json)
 
-                        dist_val = distance(predicted_norm, ground_norm)
-                        lev_sum += dist_val
-                        lev_count += 1
+                            dist_val = distance(predicted_norm, ground_norm)
+                            lev_sum += dist_val
+                            lev_count += 1
 
-                        pages_lev_map[page_count][0] += dist_val
-                        pages_lev_map[page_count][1] += 1
-                    else:
-                        dist_val = distance(cleaned_str, ground_json)
-                        lev_sum += dist_val
-                        lev_count += 1
+                            pages_lev_map[page_count][0] += dist_val
+                            pages_lev_map[page_count][1] += 1
+                        else:
+                            dist_val = distance(cleaned_str, ground_json)
+                            lev_sum += dist_val
+                            lev_count += 1
 
-                        pages_lev_map[page_count][0] += dist_val
-                        pages_lev_map[page_count][1] += 1
+                            pages_lev_map[page_count][0] += dist_val
+                            pages_lev_map[page_count][1] += 1
+
+                del ground_json, pred_json_str, cleaned_str, message_list, batch
+                torch.cuda.empty_cache()
 
         avg_lev_dist: float = 0.0
         if lev_count > 0:
