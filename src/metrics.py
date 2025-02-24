@@ -182,7 +182,7 @@ class CustomMetrics(JsonHandler):
     def evaluate_on_testset(
             self, 
             test_set,
-            model_merged_path: str,
+            vLLM_model,
             model_fix,
             processor_fix,
             do_auto_fix: bool = False,

@@ -10,18 +10,8 @@ from metrics import CustomMetrics
 from custom_datasets import CustomDataSets
 from plot_results import PlotResults
 
-base_model_id = "Qwen/Qwen2-VL-7B-Instruct"
-checkpoint_folder = "Checkpoints/20250223-081257"
 cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
 model_fix_name: str = "Qwen/Qwen2.5-72B-Instruct"
-
-base_model = AutoModelForVision2Seq.from_pretrained(
-    base_model_id,
-    torch_dtype=torch.float16,
-    device_map="auto",
-    cache_dir=cache_dir,
-    attn_implementation="flash_attention_2",
-)
 
 model_fix = AutoModelForCausalLM.from_pretrained(
     model_fix_name,
@@ -30,32 +20,11 @@ model_fix = AutoModelForCausalLM.from_pretrained(
     cache_dir=cache_dir,
     attn_implementation="flash_attention_2",
 )
-
-peft_model = PeftModel.from_pretrained(
-    base_model,
-    checkpoint_folder,
-    torch_dtype=torch.float16,
-    device_map="auto",
-)
-
-merged_model = peft_model.merge_and_unload()
-merged_model.eval()
-
-processor = AutoProcessor.from_pretrained(base_model_id, trust_remote_code=True)
 processor_fix = AutoProcessor.from_pretrained(model_fix_name, trust_remote_code=True)
 
-torch.cuda.empty_cache()
-
-# save merged model -> pass later to vLLM
-save_path = "merged_qwen_vl_lora"
-if not os.path.exists(save_path):
-    os.makedirs(save_path, exist_ok=True)
-merged_model.save_pretrained(save_path)
-processor.save_pretrained(save_path)
-
-# get merged model for vLLM inference
+path = "Saved_models"
 vLLM_model = LLM(
-    model=model_merged_path,
+    model=path,
     tensor_parallel_size=4,
     dtype="float16",
     trust_remote_code=True,
@@ -72,7 +41,7 @@ custom_metrics = CustomMetrics()
 plot = PlotResults()
 artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_on_testset(
     test_set,
-    save_path, 
+    vLLM_model, 
     model_fix,
     processor_fix,
     do_auto_fix=False,
