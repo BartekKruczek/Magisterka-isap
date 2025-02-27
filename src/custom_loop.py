@@ -22,7 +22,7 @@ my_time: float = time.time()
 time_str = time.strftime("%Y%m%d-%H%M%S", time.localtime(my_time))
 
 model_id: str = "Qwen/Qwen2-VL-7B-Instruct"
-model = AutoModelForVision2Seq.from_pretrained(
+model = Qwen2VLForConditionalGeneration.from_pretrained(
     model_id,
     device_map = "auto",
     torch_dtype=torch.float16,
