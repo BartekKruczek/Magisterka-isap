@@ -31,7 +31,7 @@ class CustomMetrics(JsonHandler):
             example, 
             model, 
             processor, 
-            max_new_tokens=8192, 
+            max_new_tokens=32768, 
             debug: bool = False,
         ):
         message = example["messages"]
@@ -93,7 +93,7 @@ class CustomMetrics(JsonHandler):
 
         return has_before or has_after
     
-    def normalize_json_str(json_str: str) -> str:
+    def normalize_json_str(self,json_str: str) -> str:
         """
         Parse a JSON string into a Python object, sort all dictionaries,
         then dump back to a string with consistent settings.
