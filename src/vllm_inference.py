@@ -1,10 +1,6 @@
-import torch
 import pandas as pd
-# import torch._dynamo
-# torch._dynamo.config.suppress_errors = True
 
-from peft import PeftModel
-from transformers import AutoModelForVision2Seq, AutoProcessor, AutoModelForCausalLM
+from transformers import AutoProcessor
 from vllm import LLM
 from multiprocessing import freeze_support
 
@@ -12,30 +8,36 @@ from metrics import CustomMetrics
 from custom_datasets import CustomDataSets
 from plot_results import PlotResults
 
-def main():
+def get_processor():
+    model_name = "Qwen/Qwen2.5-VL-72B-Instruct"
     cache_dir = "/net/scratch/hscra/plgrid/plgkruczek/.cache"
-    model_fix_name: str = "Qwen/Qwen2.5-72B-Instruct"
-
-    model_fix = AutoModelForCausalLM.from_pretrained(
-        model_fix_name,
-        torch_dtype=torch.float16,
-        device_map="auto",
+    processor = AutoProcessor.from_pretrained(
+        model_name,
         cache_dir=cache_dir,
-        attn_implementation="flash_attention_2",
-    )
-    processor_fix = AutoProcessor.from_pretrained(model_fix_name, trust_remote_code=True)
+        min_pixels=128*28*28,
+        max_pixels=256*28*28,
+        use_fast=True,
+        )
+    return processor
 
-    path = "Saved_models"
+def main(processor):
+    path = "/net/scratch/hscra/plgrid/plgkruczek/Saved_models/2_5_72B"
     vLLM_model = LLM(
         model=path,
+        max_num_seqs=8192,
+        max_num_batched_tokens=65536,
         tensor_parallel_size=4,
+        pipeline_parallel_size=1,
         dtype="float16",
         trust_remote_code=True,
-        max_model_len=32768,
         limit_mm_per_prompt={"image": 10},
+        enforce_eager=False,
+        enable_prefix_caching=True,
+        disable_custom_all_reduce=True,
+        gpu_memory_utilization=0.95,
     )
 
-    test_df = pd.read_csv("Checkpoints/20250223-081257/test_set.csv")
+    test_df = pd.read_csv("/net/scratch/hscra/plgrid/plgkruczek/Saved_models/2_5_72B/test_set.csv")
 
     custom_set = CustomDataSets()
     test_set = custom_set.get_dataset(debug=False, dataframe=test_df)
@@ -44,13 +46,14 @@ def main():
     plot = PlotResults()
     artefact_pct, valid_pct, avg_lev_dist, pages_lev_map = custom_metrics.evaluate_on_testset(
         test_set,
-        vLLM_model, 
-        model_fix,
-        processor_fix,
-        do_auto_fix=False,
+        vLLM_model,
+        processor, 
+        model_fix=vLLM_model,
+        processor_fix=processor,
+        do_auto_fix=True,
         use_xgrammar=False,
         do_normalize_jsons=True,
-        debug=False,
+        debug=True,
     )
 
     print(f"Percentage of all artefacts detected: {artefact_pct}")
@@ -62,4 +65,5 @@ def main():
 
 if __name__ == '__main__':
     freeze_support()
-    main()
+    processor = get_processor()
+    main(processor)
